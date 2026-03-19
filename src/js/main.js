@@ -20,27 +20,30 @@ function init() {
     for (const el of els) el.classList.add("is-visible");
   }
 
-  // Active nav link based on section in view
+  // Active nav link based on current page URL
   const navLinks = Array.from(document.querySelectorAll(".nav a"));
-  const sections = navLinks
-    .map((a) => document.querySelector(a.getAttribute("href")))
-    .filter(Boolean);
+  const currentPath = window.location.pathname;
+  
+  navLinks.forEach(link => {
+    const href = link.getAttribute("href");
+    if (!href || href.startsWith("#") || href.startsWith("mailto") || link.classList.contains("btn")) return;
+    
+    if (currentPath.endsWith(href) || (href === "index.html" && currentPath.endsWith("/"))) {
+      link.classList.add("is-active");
+    } else {
+      link.classList.remove("is-active");
+    }
+  });
 
-  if (sections.length && "IntersectionObserver" in window) {
-    const ioNav = new IntersectionObserver(
-      (entries) => {
-        const visible = entries
-          .filter((e) => e.isIntersecting)
-          .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
-        if (!visible) return;
-        const id = `#${visible.target.id}`;
-        for (const a of navLinks) {
-          a.classList.toggle("is-active", a.getAttribute("href") === id);
-        }
-      },
-      { rootMargin: "-20% 0px -70% 0px", threshold: [0.1, 0.2, 0.35] }
-    );
-    for (const s of sections) ioNav.observe(s);
+  // Scroll progress bar
+  const progressBar = document.getElementById("scrollProgress");
+  if (progressBar) {
+    window.addEventListener('scroll', () => {
+      const winScroll = document.body.scrollTop || document.documentElement.scrollTop;
+      const height = document.documentElement.scrollHeight - document.documentElement.clientHeight;
+      const scrolled = (winScroll / height) * 100;
+      progressBar.style.width = scrolled + "%";
+    }, {passive: true});
   }
 }
 
