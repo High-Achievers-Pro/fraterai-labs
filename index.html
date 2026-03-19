@@ -2,31 +2,24 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- Redirect GitHub Pages directly to the source directory -->
+    <meta http-equiv="refresh" content="0; url=src/index.html" />
     <title>High Achievers</title>
-    <link rel="stylesheet" href="./src/styles/main.css" />
-    <script defer src="./src/js/main.js"></script>
+    <style>
+      body {
+        background: #020202;
+        color: #fff;
+        font-family: system-ui, sans-serif;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 100vh;
+        margin: 0;
+      }
+      a { color: #fff; opacity: 0.7; }
+    </style>
   </head>
   <body>
-    <!-- Source of truth lives in ./src/index.html -->
-    <noscript>This site works best with JavaScript enabled.</noscript>
-    <!-- Keep a single entry point so local servers serve /index.html at root -->
-    <main id="app"></main>
-    <script>
-      // Simple include-style load: render the src HTML into #app for now.
-      // (This keeps a scalable /src structure without needing a bundler yet.)
-      fetch("./src/index.html")
-        .then((r) => r.text())
-        .then((html) => {
-          const doc = new DOMParser().parseFromString(html, "text/html");
-          const body = doc.body;
-          document.querySelector("#app").replaceWith(...body.childNodes);
-          window.dispatchEvent(new Event("ha:ready"));
-        })
-        .catch(() => {
-          document.body.innerHTML =
-            "<p style='color:white;font-family:system-ui;padding:24px'>Could not load app. Run a local server (not file://).</p>";
-        });
-    </script>
+    <p>Redirecting to <a href="src/index.html">the live app</a>...</p>
   </body>
 </html>
