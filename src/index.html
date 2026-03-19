@@ -12,6 +12,10 @@
 </head>
 
 <body>
+  <div class="aurora-bg">
+    <div class="aurora-blob aurora-1"></div>
+    <div class="aurora-blob aurora-2"></div>
+  </div>
 
   <header class="site-header">
     <div class="container">
@@ -31,40 +35,48 @@
   </header>
 
   <main id="top">
-    <section class="hero">
+    <section class="hero" style="padding-top: 6rem; padding-bottom: 4rem;">
       <div class="container hero-grid">
         <div class="hero-copy reveal">
-          <p class="eyebrow">BUILT FOR MODERN TEAMS</p>
-          <h1>Innovative digital systems with a distinctly human touch.</h1>
-          <p class="hero-tagline">
+          <p class="eyebrow" style="color: var(--accent); font-weight: 600;">BUILT FOR MODERN TEAMS</p>
+          <h1>Innovative digital systems with a <span class="text-highlight">distinctly human</span> touch.</h1>
+          <p class="hero-tagline" style="margin-left: auto; margin-right: auto; max-width: 600px; font-size: 1.2rem;">
             FraterAI helps organizations move from strategy to deployment with thoughtful services, polished execution,
             and experiences that feel clear, useful, and alive.
           </p>
-          <div class="hero-actions">
+          <div class="hero-actions" style="margin-top: 2rem;">
             <a href="#contact" class="btn btn-primary">Start a conversation</a>
+            <a href="#services" class="btn btn-ghost">Explore services</a>
           </div>
         </div>
+      </div>
+    </section>
 
+    <section class="section" style="padding-top: 0; padding-bottom: 6rem;">
+      <div class="container" style="max-width: 900px; margin: 0 auto;">
         <div class="hero-panel reveal">
-          <div class="panel-card glass-panel">
-            <div class="panel-title">Studio Preview</div>
-            <ul class="panel-list feature-list">
+          <div class="panel-card glass-panel"
+            style="padding: 3rem; background: var(--bg); border: 1px solid rgba(0,0,0,0.04); box-shadow: var(--shadow-hover); border-radius: 24px;">
+            <div class="panel-title"
+              style="text-align: center; font-size: 1.5rem; font-weight: 600; border: none; margin-bottom: 2rem; padding-bottom: 0;">
+              Platform Principles</div>
+            <ul class="panel-list feature-list" style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
               <li>
-                <strong>Experience Orchestration</strong>
-                <span>Flows feel guided, responsive, and intentional.</span>
+                <strong style="font-size: 1.1rem; margin-bottom: 0.25rem;">Experience Orchestration</strong>
+                <span style="font-size: 1rem;">Flows feel guided, responsive, and intentional.</span>
               </li>
               <li>
-                <strong>Knowledge Layer</strong>
-                <span>Context appears when and where it matters most.</span>
+                <strong style="font-size: 1.1rem; margin-bottom: 0.25rem;">Knowledge Layer</strong>
+                <span style="font-size: 1rem;">Context appears when and where it matters most.</span>
               </li>
               <li>
-                <strong>Interaction Philosophy</strong>
-                <span>A polished layer, not a noisy one. Thoughtful digital products feel considered, useful, and
-                  quietly memorable.</span>
+                <strong style="font-size: 1.1rem; margin-bottom: 0.25rem;">Interaction Philosophy</strong>
+                <span style="font-size: 1rem;">Thoughtful digital products feel considered, useful, and quietly
+                  memorable.</span>
               </li>
               <li>
-                <strong>Composition</strong>
-                <span>Modern interface rhythm.</span>
+                <strong style="font-size: 1.1rem; margin-bottom: 0.25rem;">Composition</strong>
+                <span style="font-size: 1rem;">Modern interface rhythm.</span>
               </li>
             </ul>
           </div>
@@ -329,7 +341,7 @@
 
   <footer class="site-footer">
     <div class="container">
-      <p>&copy; 2024 FraterAI. All rights reserved.</p>
+      <p>&copy; 2026 FraterAI. All rights reserved.</p>
     </div>
   </footer>
 

@@ -11,14 +11,15 @@
   --muted-2: rgba(0, 0, 0, 0.45);
 
   /* A very elegant, subtle accent color */
-  --accent: #000000;
-  --accent-2: #333333;
+  --accent: #2563eb;
+  --accent-2: #1d4ed8;
   
   --primary: #111111;
   --primary-invert: #ffffff;
 
   --shadow: 0 12px 32px rgba(0, 0, 0, 0.04), 0 2px 8px rgba(0, 0, 0, 0.02);
-  --radius: 12px;
+  --shadow-hover: 0 20px 48px rgba(0, 0, 0, 0.08), 0 4px 16px rgba(0, 0, 0, 0.04);
+  --radius: 16px;
   --container: 1120px;
 }
 
@@ -36,14 +37,57 @@ body {
   margin: 0;
   font-family: "Inter", "Outfit", ui-sans-serif, system-ui, -apple-system, sans-serif;
   background: var(--bg);
-  background-image: 
-    radial-gradient(circle at 15% 50%, rgba(0,0,0,0.01) 0%, transparent 50%),
-    radial-gradient(circle at 85% 30%, rgba(0,0,0,0.01) 0%, transparent 50%);
   color: var(--text);
   line-height: 1.6;
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* Animated Aurora Background attached to body */
+.aurora-bg {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  z-index: -1;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.aurora-blob {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(90px);
+  opacity: 0.6;
+  animation: blob-float 20s ease-in-out infinite alternate;
+  will-change: transform;
+}
+
+.aurora-1 {
+  top: -15%; left: -10%;
+  width: 55vw; height: 55vw;
+  background: rgba(37, 99, 235, 0.12); /* Softer Blue */
+}
+
+.aurora-2 {
+  bottom: -20%; right: -10%;
+  width: 65vw; height: 65vw;
+  background: rgba(16, 185, 129, 0.08); /* Softer Green */
+  animation-delay: -7s;
+  animation-duration: 25s;
+}
+
+@keyframes blob-float {
+  0% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(10vw, 5vh) scale(1.1); }
+  100% { transform: translate(-5vw, -8vh) scale(0.9); }
+}
+
+.text-highlight {
+  color: var(--accent);
+  background: rgba(37, 99, 235, 0.06);
+  padding: 0.1em 0.4em;
+  border-radius: 8px;
+  display: inline-block;
 }
 
 img {
@@ -63,10 +107,11 @@ img {
   position: sticky;
   top: 0;
   z-index: 50;
-  border-bottom: 1px solid var(--border);
-  background: rgba(255, 255, 255, 0.85);
-  backdrop-filter: blur(12px) saturate(180%);
-  -webkit-backdrop-filter: blur(12px) saturate(180%);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.4);
+  background: rgba(255, 255, 255, 0.45);
+  backdrop-filter: blur(24px) saturate(200%);
+  -webkit-backdrop-filter: blur(24px) saturate(200%);
+  transition: all 0.3s ease;
 }
 
 .site-header .container {
@@ -114,24 +159,33 @@ img {
   color: var(--text);
 }
 
+.nav a.btn {
+  color: inherit;
+  transition: all 0.2s ease;
+}
+
+.nav a.btn-primary {
+  color: var(--primary-invert);
+}
+
 /* Buttons */
 .btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 0.85rem 1.4rem;
-  border-radius: 100px;
+  padding: 0.85rem 1.75rem;
+  border-radius: 9999px; /* absolute pill shape */
   font-weight: 500;
   font-size: 0.95rem;
   text-decoration: none;
   border: 1px solid transparent;
-  transition: all 0.25s ease;
+  transition: all 0.2s ease;
   will-change: transform;
   cursor: pointer;
 }
 
 .btn-sm {
-  padding: 0.5rem 1rem;
+  padding: 0.5rem 1.25rem;
   font-size: 0.85rem;
 }
 
@@ -148,12 +202,18 @@ img {
 }
 
 .btn-primary::after {
-  content: '';
+  content: "";
   position: absolute;
-  top: 0; left: 0; right: 0; bottom: 0;
-  background: linear-gradient(180deg, rgba(255,255,255,0.15) 0%, transparent 100%);
-  border-radius: inherit;
-  pointer-events: none;
+  top: 0; left: -100%; width: 50%; height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.25), transparent);
+  transform: skewX(-20deg);
+  animation: shimmer 5s infinite linear;
+}
+
+@keyframes shimmer {
+  0% { left: -100%; }
+  15% { left: 200%; }
+  100% { left: 200%; }
 }
 
 .btn-primary:active {
@@ -163,18 +223,19 @@ img {
 .btn-primary:hover {
   transform: translateY(-1px);
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
-  background: #222222;
+  background: #252525;
 }
 
 .btn-ghost {
-  background: transparent;
-  border-color: var(--border);
+  background: var(--surface);
+  border-color: transparent;
   color: var(--text);
+  font-weight: 500;
 }
 
 .btn-ghost:hover {
-  background: var(--surface);
-  border-color: rgba(0, 0, 0, 0.15);
+  background: var(--border);
+  border-color: transparent;
 }
 
 /* Hero */
@@ -183,10 +244,13 @@ img {
 }
 
 .hero-grid {
-  display: grid;
-  grid-template-columns: 1.2fr 0.8fr;
-  gap: 2rem;
+  display: flex;
+  flex-direction: column;
   align-items: center;
+  text-align: center;
+  gap: 2rem;
+  max-width: 800px;
+  margin: 0 auto;
 }
 
 .eyebrow {
@@ -203,10 +267,10 @@ img {
 
 .hero h1 {
   margin: 0 0 1.25rem;
-  font-size: clamp(2.5rem, 5vw, 4rem);
+  font-size: clamp(3rem, 6vw, 4.5rem);
   letter-spacing: -0.04em;
-  line-height: 1.05;
-  font-weight: 500;
+  line-height: 1.1;
+  font-weight: 600;
   color: var(--text);
 }
 
@@ -219,6 +283,7 @@ img {
 
 .hero-actions {
   display: flex;
+  justify-content: center;
   gap: 0.85rem;
   flex-wrap: wrap;
   margin-bottom: 1.5rem;
@@ -327,41 +392,37 @@ img {
 .card {
   position: relative;
   border-radius: var(--radius);
-  border: 1px solid var(--border);
-  background: var(--bg);
-  padding: 2.25rem;
-  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.3s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.015);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(12px);
+  padding: 2.5rem;
+  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.4s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: var(--shadow);
   display: flex;
   flex-direction: column;
   overflow: hidden;
 }
 
-/* Subtle noise texture overlay common in premium DevTools */
-.card::before {
-  content: "";
-  position: absolute;
-  top: 0; left: 0; right: 0; bottom: 0;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.03'/%3E%3C/svg%3E");
-  pointer-events: none;
-  z-index: 0;
-}
-
-.card > * {
-  position: relative;
-  z-index: 1;
-}
-
-/* Layout overrides for 4 Bento Items */
+/* Restore grid layout for Bento cards */
 .card:nth-child(1) { grid-column: span 6; }
 .card:nth-child(2) { grid-column: span 6; }
 .card:nth-child(3) { grid-column: span 6; }
 .card:nth-child(4) { grid-column: span 6; }
 
 .card:hover {
-  transform: translateY(-4px);
-  border-color: rgba(0, 0, 0, 0.12);
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.06);
+  transform: translateY(-8px) scale(1.01);
+  border-color: rgba(37, 99, 235, 0.15);
+  box-shadow: 0 24px 48px rgba(37, 99, 235, 0.08), 0 4px 16px rgba(0, 0, 0, 0.04);
+}
+
+.card svg {
+  transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1), color 0.3s ease;
+  transform-origin: center;
+}
+
+.card:hover svg {
+  transform: scale(1.15) rotate(-3deg);
+  color: var(--accent);
 }
 
 .card h3 {
