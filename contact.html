@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FraterAI</title>
+  <link rel="stylesheet" href="/src/styles/main.css">
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@400;500;600&display=swap"
+    rel="stylesheet">
+</head>
+
+<body>
+  <div class="scroll-progress" id="scrollProgress"></div>
+
+  <header class="site-header">
+    <div class="container">
+      <a href="#top" class="brand">
+        <img src="/src/assets/logo.svg" alt="FraterAI Logo" class="brand-mark" width="32" height="32">
+        <span class="brand-name">FraterAI</span>
+      </a>
+      <nav class="nav">
+        <a href="/">Home</a>
+        <a href="/services">Services</a>
+        <a href="/process">Process</a>
+        <a href="/solutions">Solutions</a>
+        <a href="/resources">Resources</a>
+        <a href="/about">About</a>
+        <a href="/contact" class="btn btn-primary btn-sm">Start a conversation</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="top">
+
+    <section class="section">
+      <div class="container split-contact reveal">
+        <div class="contact-left">
+          <h1 style="font-size: 3.5rem; margin-bottom: 1.5rem; font-weight: 600;">Let's build something <span style="font-family: ui-serif, Georgia, Cambria, 'Times New Roman', Times, serif; font-style: italic; color: var(--accent);">extraordinary.</span></h1>
+          <p>Whether you need a custom document-processing pipeline, an army of intelligent agents, or an enterprise-wide model rollout, our engineering team is ready to help you push boundaries.</p>
+          <div style="margin-top: 3rem;">
+            <p style="font-size: 0.875rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); margin-bottom: 0.5rem;">DIRECT EMAIL</p>
+            <p><a href="mailto:hello@highachievers.ai" style="color: #fff; text-decoration: none; font-size: 1.25rem;">hello@highachievers.ai</a></p>
+          </div>
+        </div>
+
+        <div class="contact-right">
+          <div class="contact-tabs">
+            <button class="contact-tab active" onclick="switchContactTab('form')">Send Message</button>
+            <button class="contact-tab" onclick="switchContactTab('calendar')">Book a Call</button>
+          </div>
+
+          <div id="contact-form-view">
+            <form id="cinematic-contact-form" action="https://formsubmit.co/sabayo507@gmail.com" method="POST" class="cinematic-form">
+              <!-- FormSubmit config -->
+              <input type="hidden" name="_captcha" value="false">
+              <input type="text" name="_honey" style="display:none">
+              <input type="hidden" name="_subject" value="New Lead from FraterAI Website!">
+              <input type="hidden" name="_template" value="table">
+
+              <div class="form-group">
+                <label for="name">Name</label>
+                <input type="text" id="name" name="name" placeholder="Jane Doe" required>
+              </div>
+              <div class="form-group">
+                <label for="email">Work Email</label>
+                <input type="email" id="email" name="email" placeholder="jane@company.com" required>
+              </div>
+              <div class="form-group">
+                <label for="company">Company</label>
+                <input type="text" id="company" name="company" placeholder="Acme Corp">
+              </div>
+              <div class="form-group">
+                <label for="message">How can we help?</label>
+                <textarea id="message" name="message" rows="5" placeholder="Tell us about your context and goals..." required></textarea>
+              </div>
+              <button type="submit" id="submit-btn" class="btn btn-primary btn-block" style="width: 100%; justify-content: center; transition: all 0.3s ease;">Send Message</button>
+            </form>
+          </div>
+
+          <div id="contact-calendar-view" class="cinematic-form" style="display: none; padding: 0; overflow: hidden; border: none; background: transparent; box-shadow: none;">
+            <!-- Calendly inline widget begin -->
+            <div class="calendly-inline-widget" data-url="https://calendly.com/sabayo507" style="min-width:320px;height:750px;"></div>
+            <script type="text/javascript" src="https://assets.calendly.com/assets/external/widget.js" async></script>
+            <!-- Calendly inline widget end -->
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <p>&copy; 2026 FraterAI. All rights reserved.</p>
+    </div>
+  </footer>
+
+  <script>
+    function switchContactTab(view) {
+      document.getElementById('contact-form-view').style.display = view === 'form' ? 'block' : 'none';
+      document.getElementById('contact-calendar-view').style.display = view === 'calendar' ? 'block' : 'none';
+      
+      const tabs = document.querySelectorAll('.contact-tab');
+      tabs[0].classList.toggle('active', view === 'form');
+      tabs[1].classList.toggle('active', view === 'calendar');
+    }
+
+    const contactForm = document.getElementById('cinematic-contact-form');
+    const submitBtn = document.getElementById('submit-btn');
+
+    if (contactForm) {
+      contactForm.addEventListener('submit', function(e) {
+        e.preventDefault(); // Stop the default page redirect
+        const originalText = submitBtn.innerText;
+        submitBtn.innerText = 'Sending...';
+        submitBtn.disabled = true;
+
+        const formData = new FormData(contactForm);
+        const name = formData.get('name') || 'Unknown User';
+        const email = formData.get('email') || 'No Email';
+        const company = formData.get('company') || '';
+        const msg = formData.get('message') || '';
+
+        // Formulate exactly what the user requested
+        const customSubject = `URGENT - New Client [${name}] request!`;
+        const customBody = `A client named ${name} with email ${email}${company ? ` from ${company} ` : ' '}is looking for:\n\n"${msg}"`;
+
+        const payload = new FormData();
+        payload.append('_captcha', 'false'); // Remove recaptcha wall
+        payload.append('_template', 'basic'); // 'basic' is the cleanest FormSubmit layout
+        payload.append('_subject', customSubject); // Dynamic custom subject
+        payload.append('email', email); // Keep 'email' so "Reply-To" works natively in Gmail
+        payload.append('Message_Details', customBody); // Single giant field
+
+        fetch(contactForm.action, {
+          method: 'POST',
+          body: payload,
+          headers: { 'Accept': 'application/json' } // Request JSON so browser doesn't load FormSubmit's page
+        })
+        .then(response => {
+          if (response.ok) {
+            submitBtn.innerText = '✓ Message Sent! We will get in touch soon.';
+            submitBtn.style.backgroundColor = 'transparent';
+            submitBtn.style.color = '#10B981'; // Green success
+            submitBtn.style.borderColor = '#10B981';
+            contactForm.reset();
+          } else {
+            submitBtn.innerText = 'Error: Owner must click "Activate Form" in inbox first.';
+            submitBtn.style.backgroundColor = 'transparent';
+            submitBtn.style.color = '#ef4444'; // Red error
+            submitBtn.style.borderColor = '#ef4444';
+          }
+        })
+        .catch(error => {
+          submitBtn.innerText = 'Network error sending message.';
+        })
+        .finally(() => {
+          // Reset button back to normal after 6 seconds
+          setTimeout(() => {
+            submitBtn.innerText = originalText;
+            submitBtn.style.backgroundColor = '';
+            submitBtn.style.color = '';
+            submitBtn.style.borderColor = '';
+            submitBtn.disabled = false;
+          }, 6000);
+        });
+      });
+    }
+  </script>
+</body>
+
+</html>
