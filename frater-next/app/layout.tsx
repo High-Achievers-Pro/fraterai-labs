@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import Navbar from "@/components/global/Navbar";
 import Footer from "@/components/global/Footer";
+import ScrollRevealProvider from "@/components/global/ScrollRevealProvider";
 
 export const metadata: Metadata = {
   title: "FraterAI",
@@ -22,9 +23,11 @@ export default function RootLayout({
         />
       </head>
       <body>
-        <Navbar />
-        {children}
-        <Footer />
+        <ScrollRevealProvider>
+          <Navbar />
+          {children}
+          <Footer />
+        </ScrollRevealProvider>
       </body>
     </html>
   );
