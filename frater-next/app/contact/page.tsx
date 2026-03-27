@@ -18,37 +18,27 @@ export default function Contact() {
     e.preventDefault();
     const originalText = 'Send Message';
     setButtonState({ ...buttonState, text: 'Sending...', disabled: true });
-
     const formData = new FormData(e.currentTarget);
-    const name = formData.get('name') || '';
-    const email = formData.get('email') || '';
+    const name = formData.get('name') || 'Unknown User';
+    const email = formData.get('email') || 'No Email';
     const company = formData.get('company') || '';
     const msg = formData.get('message') || '';
 
-    // Split name into firstname and lastname to match HubSpot default properties
-    const nameParts = (name as string).trim().split(' ');
-    const firstname = nameParts[0];
-    const lastname = nameParts.length > 1 ? nameParts.slice(1).join(' ') : '';
+    const customSubject = `URGENT - New Client [${name}] request!`;
+    const customBody = `A client named ${name} with email ${email}${company ? ` from ${company} ` : ' '}is looking for:\n\n"${msg}"`;
 
-    const payload = {
-      fields: [
-        { name: 'email', value: email },
-        { name: 'firstname', value: firstname },
-        { name: 'lastname', value: lastname },
-        { name: 'company', value: company },
-        { name: 'message', value: msg }
-      ],
-      context: {
-        pageUri: window.location.href,
-        pageName: document.title
-      }
-    };
+    const payload = new FormData();
+    payload.append('_captcha', 'false');
+    payload.append('_template', 'basic');
+    payload.append('_subject', customSubject as string);
+    payload.append('email', email as string);
+    payload.append('Message_Details', customBody);
 
     try {
-      const response = await fetch('https://api.hsforms.com/submissions/v3/integration/submit/245673738/7aaf12d7-5cc8-43a9-91ce-2fcb0961ab4c', {
+      const response = await fetch('https://formsubmit.co/sabayo507@gmail.com', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
+        body: payload,
+        headers: { 'Accept': 'application/json' }
       });
 
       if (response.ok) {
@@ -62,7 +52,7 @@ export default function Contact() {
         (e.target as HTMLFormElement).reset();
       } else {
         setButtonState({
-          text: 'Error submitting form. Please try again.',
+          text: 'Error: Owner must click "Activate Form" in inbox first.',
           disabled: false,
           color: '#ef4444',
           borderColor: '#ef4444',
@@ -121,6 +111,10 @@ export default function Contact() {
 
             <div id="contact-form-view" style={{ display: activeTab === 'form' ? 'block' : 'none' }}>
               <form id="cinematic-contact-form" onSubmit={handleSubmit} className="cinematic-form">
+                <input type="hidden" name="_captcha" value="false" />
+                <input type="text" name="_honey" style={{ display: 'none' }} />
+                <input type="hidden" name="_subject" value="New Lead from FraterAI Website!" />
+                <input type="hidden" name="_template" value="table" />
 
                 <div className="form-group">
                   <label htmlFor="name">Name</label>
