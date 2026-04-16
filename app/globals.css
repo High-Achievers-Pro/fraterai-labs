@@ -137,6 +137,71 @@ img {
   color: var(--primary-invert);
 }
 
+/* Mobile Navigation */
+.mobile-toggle {
+  display: none;
+  background: transparent;
+  border: none;
+  color: var(--text);
+  cursor: pointer;
+  padding: 0.5rem;
+  margin-right: -0.5rem;
+  z-index: 60;
+  transition: transform 0.2s ease;
+}
+
+.mobile-toggle:active {
+  transform: scale(0.9);
+}
+
+@media (max-width: 960px) {
+  .mobile-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .nav {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100vh;
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(28px);
+    -webkit-backdrop-filter: blur(28px);
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 2rem;
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(-10px);
+    transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    z-index: 55;
+  }
+
+  .nav.nav-open {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateY(0);
+  }
+
+  .nav a {
+    font-size: 1.5rem;
+    padding: 0.5rem 1rem;
+    width: 100%;
+    text-align: center;
+  }
+
+  .nav a.mobile-cta {
+    width: auto;
+    margin-top: 1.5rem;
+    padding: 1.15rem 2.5rem;
+    font-size: 1.1rem;
+  }
+}
+
 /* Buttons */
 .btn {
   display: inline-flex;
@@ -606,12 +671,21 @@ img {
 }
 
 @media (max-width: 640px) {
-  .nav {
-    gap: 0.5rem;
+  /* Removed old nav media queries, handled globally above */
+  .section {
+    padding: 5rem 0;
   }
-  .nav a {
-    font-size: 0.85rem;
-    padding: 0.35rem 0.75rem;
+  
+  .glass-panel {
+    padding: 1.5rem;
+  }
+  
+  .interactive-service-card {
+    padding: 2rem 1.5rem;
+  }
+  
+  .step {
+    padding: 0.5rem 1rem;
   }
 }
 
