@@ -13,14 +13,6 @@ export const metadata: Metadata = {
     description: "Intelligent agent architectures tailored to your deepest workflows.",
     url: "https://frater.ai",
     siteName: "FraterAI",
-    images: [
-      {
-        url: "/src/assets/logo.svg",
-        width: 1200,
-        height: 630,
-        alt: "FraterAI Preview Image",
-      },
-    ],
     locale: "en_US",
     type: "website",
   },
