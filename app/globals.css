@@ -320,6 +320,10 @@ img {
     padding: 1.15rem 2.5rem;
     font-size: 1.1rem;
   }
+
+  .mega-menu {
+    display: none;
+  }
 }
 
 /* Buttons */
