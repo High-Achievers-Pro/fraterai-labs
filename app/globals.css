@@ -71,9 +71,7 @@ img {
 
 /* Header */
 .site-header {
-  position: sticky;
-  top: 0;
-  z-index: 50;
+  position: static;
   border-bottom: 1px solid rgba(255, 255, 255, 0.4);
   background: rgba(255, 255, 255, 0.45);
   backdrop-filter: blur(24px) saturate(200%);
@@ -148,9 +146,7 @@ img {
 /* Mega Menu Structure (Desktop Only) */
 @media (min-width: 961px) {
   .site-header {
-    position: sticky;
-    top: 0;
-    z-index: 50;
+    position: static;
     border-bottom: 1px solid rgba(255, 255, 255, 0.4);
     background: rgba(255, 255, 255, 0.45);
     backdrop-filter: blur(24px) saturate(200%);

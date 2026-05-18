@@ -11,11 +11,10 @@ export default function Home() {
         
         <div className="container hero-grid" style={{ position: 'relative', zIndex: 1 }}>
           <div className="hero-copy reveal">
-            <p className="eyebrow" style={{ color: 'rgba(255,255,255,0.85)', fontWeight: 600, letterSpacing: '0.05em' }}>BUILT FOR MODERN TEAMS</p>
-            <h1 style={{ color: '#ffffff' }}>Innovative digital systems with a <span className="text-highlight" style={{ color: '#ffffff', textShadow: '0 4px 12px rgba(0,0,0,0.6)' }}>distinctly human</span> touch.</h1>
+            <p className="eyebrow" style={{ color: 'rgba(255,255,255,0.85)', fontWeight: 600, letterSpacing: '0.05em' }}>For mid-market operators</p>
+            <h1 style={{ color: '#ffffff' }}>Production AI, shipped in a fiscal year &mdash; not a strategy deck.</h1>
             <p className="hero-tagline" style={{ marginLeft: 'auto', marginRight: 'auto', maxWidth: '600px', fontSize: '1.25rem', color: 'rgba(255,255,255,0.9)' }}>
-              FraterAI helps organizations move from strategy to deployment with thoughtful services, polished execution,
-              and experiences that feel clear, useful, and alive.
+              We pair strategic clarity and operator-level expertise with disciplined ML engineering to turn AI investment into operating efficiency and durable competitive advantage.
             </p>
             <div className="hero-actions" style={{ marginTop: '2.5rem' }}>
               <Link href="/contact" className="btn btn-primary" style={{ background: '#ffffff', color: 'var(--primary)', border: '1px solid #ffffff' }}>Start a conversation</Link>
