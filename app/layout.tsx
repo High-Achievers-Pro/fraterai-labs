@@ -5,8 +5,25 @@ import Footer from "@/components/global/Footer";
 import ScrollRevealProvider from "@/components/global/ScrollRevealProvider";
 
 export const metadata: Metadata = {
+  metadataBase: new URL('https://frater.ai'),
   title: "FraterAI",
   description: "Intelligent agent architectures tailored to your deepest workflows.",
+  openGraph: {
+    title: "FraterAI",
+    description: "Intelligent agent architectures tailored to your deepest workflows.",
+    url: "https://frater.ai",
+    siteName: "FraterAI",
+    images: [
+      {
+        url: "/src/assets/logo.svg",
+        width: 1200,
+        height: 630,
+        alt: "FraterAI Preview Image",
+      },
+    ],
+    locale: "en_US",
+    type: "website",
+  },
 };
 
 export default function RootLayout({

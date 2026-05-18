@@ -137,9 +137,128 @@ img {
 .nav a.btn-primary {
   color: var(--primary-invert);
 }
+.nav a.btn-primary {
+  color: var(--primary-invert);
+}
 .nav a.btn-primary:hover {
   background: #252525;
   color: var(--primary-invert);
+}
+
+/* Mega Menu Structure (Desktop Only) */
+@media (min-width: 961px) {
+  .site-header {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.4);
+    background: rgba(255, 255, 255, 0.45);
+    backdrop-filter: blur(24px) saturate(200%);
+    -webkit-backdrop-filter: blur(24px) saturate(200%);
+    transition: all 0.3s ease;
+  }
+  
+  .nav-item {
+    position: static;
+    display: flex;
+    align-items: center;
+    height: 100%;
+  }
+
+  .nav-item > a {
+    position: relative;
+  }
+
+  .mega-menu {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    width: 100%;
+    background: rgba(250, 250, 250, 0.95);
+    backdrop-filter: blur(30px) saturate(200%);
+    -webkit-backdrop-filter: blur(30px) saturate(200%);
+    border-top: 1px solid rgba(0, 0, 0, 0.05);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+    box-shadow: 0 40px 80px rgba(0, 0, 0, 0.06);
+    padding: 3rem 1.5rem;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-10px);
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    pointer-events: none;
+    z-index: 100;
+  }
+
+  .nav-item:hover .mega-menu {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+    pointer-events: auto;
+  }
+
+  /* Invisible bridge */
+  .mega-menu::before {
+    content: '';
+    position: absolute;
+    top: -20px;
+    left: 0;
+    width: 100%;
+    height: 20px;
+  }
+
+  .mega-grid {
+    display: flex;
+    gap: 3rem;
+    max-width: var(--container);
+    margin: 0 auto;
+    width: 100%;
+  }
+
+  .mega-col {
+    flex: 1;
+  }
+
+  .mega-col h4 {
+    font-size: 0.9rem;
+    color: var(--accent);
+    margin-bottom: 1.5rem;
+    border-bottom: 1px solid rgba(0,0,0,0.1);
+    padding-bottom: 0.5rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    font-weight: 600;
+  }
+
+  .mega-col-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+
+  .mega-col-list li {
+    margin-bottom: 1.5rem;
+  }
+
+  .mega-col-list a {
+    padding: 0 !important;
+    background: transparent !important;
+    color: var(--text) !important;
+    font-weight: 600 !important;
+    font-size: 1.05rem !important;
+    display: block;
+    transition: color 0.2s ease !important;
+  }
+
+  .mega-col-list a:hover {
+    color: var(--accent) !important;
+  }
+
+  .mega-col-list p {
+    font-size: 0.85rem;
+    color: var(--muted-2);
+    margin-top: 0.35rem;
+    line-height: 1.5;
+  }
 }
 
 /* Mobile Navigation */
