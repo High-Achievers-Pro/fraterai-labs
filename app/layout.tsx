@@ -5,13 +5,13 @@ import Footer from "@/components/global/Footer";
 import ScrollRevealProvider from "@/components/global/ScrollRevealProvider";
 
 export const metadata: Metadata = {
-  metadataBase: new URL('https://frater.ai'),
+  metadataBase: new URL('https://www.fraterailabs.com'),
   title: "FraterAI",
   description: "Intelligent agent architectures tailored to your deepest workflows.",
   openGraph: {
     title: "FraterAI",
     description: "Intelligent agent architectures tailored to your deepest workflows.",
-    url: "https://frater.ai",
+    url: "https://www.fraterailabs.com",
     siteName: "FraterAI",
     locale: "en_US",
     type: "website",
