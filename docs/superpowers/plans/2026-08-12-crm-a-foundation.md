@@ -750,7 +750,7 @@ Following the same pattern against `STANDARD_OBJECT_UNIVERSAL_IDENTIFIERS.person
 | `person-direct-email-status.field.ts` | SELECT | `directEmailStatus` | `ENRICHMENT_REQUIRED` (gray, default), `FOUND` (green), `NOT_FOUND` (orange), `LOW_CONFIDENCE` (yellow) |
 | `person-research-links.field.ts` | LINKS | `researchLinks` | Same warning description as Company |
 
-`alumniPath` deliberately has only two options even though the sheet holds six variants. Task 10 normalizes them.
+`alumniPath` deliberately has only two options even though the sheet holds 27 distinct variants. Task 10 normalizes them by prefix — every variant begins with either `Decision-maker` (166 rows) or `Referral` (86 rows) — so do not build an enumerated list of the observed strings.
 
 - [ ] **Step 5: Add the Prospect relations to Company and Person**
 

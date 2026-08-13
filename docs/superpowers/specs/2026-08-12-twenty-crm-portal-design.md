@@ -88,8 +88,14 @@ Data profile of the 252:
 - **All 252 `Company LinkedIn / Lookup` values are Google *search* URLs**, not
   LinkedIn profiles. The same is true of `Alumni Evidence Search` and
   `Target Person Search`.
-- `Alumni Path` has six inconsistent variants: `Decision-maker alumni` (128),
-  `Referral alumni` (47), and four one-off blends (40 combined)
+- `Alumni Path` has **27 distinct variants** across the 252 rows. The two most
+  common are `Decision-maker alumni` (128) and `Referral alumni` (47); the
+  remaining 25 are long-tail blends such as
+  `Decision-maker / Goizueta career ops connection` and
+  `Referral / CMU Project Olympus connection`. Every one begins with either
+  `Decision-maker` (166 rows) or `Referral` (86 rows), which is what makes
+  prefix matching — rather than an enumerated list — the correct
+  normalization strategy.
 
 ### 2.4 The motion the columns describe
 
@@ -233,7 +239,8 @@ are flagged, never silently truncated at send time.
    They import into a `researchLinks` field and **must never** populate Twenty's
    `linkedinLink`. Doing so would corrupt the field and break People Data Labs matching,
    which keys off real LinkedIn URLs and domains.
-2. **Normalize `Alumni Path`** from six variants to a two-value SELECT —
+2. **Normalize `Alumni Path`** from its 27 variants to a two-value SELECT —
+   by prefix match, never an enumerated list —
    `Decision-maker` / `Referral` — preserving the original string in `notes`.
 3. **`Prior 50 Exclusion` imports as a suppression list**, not as prospects. Zero
    overlap today; the list exists to prevent re-contact once enrichment adds companies.
