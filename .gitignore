@@ -40,4 +40,9 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-scripts/import-prospects/fixtures/prospects.xlsx
+# Spreadsheets are assumed to hold real prospect data (names, titles, contact
+# research) and are never committed. Pinning one exact path meant a rename or
+# a second copy would sail straight into git. The only exception is the
+# synthetic test fixture (Ada Lovelace / Grace Hopper), which is tracked.
+*.xlsx
+!scripts/import-prospects/__tests__/fixtures/mini.xlsx
