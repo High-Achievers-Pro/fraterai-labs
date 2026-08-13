@@ -50,7 +50,7 @@ const cellText = (value: ExcelJS.CellValue): string => {
   return String(value).trim();
 };
 
-const readSheet = async (filePath: string, sheetName: string) => {
+export const readSheet = async (filePath: string, sheetName: string) => {
   const workbook = new ExcelJS.Workbook();
   const raw = await readFile(filePath);
   const normalized = await normalizeWorkbookBuffer(raw);

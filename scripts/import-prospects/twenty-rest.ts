@@ -22,10 +22,29 @@ const request = async <T>(path: string, init: RequestInit = {}): Promise<T> => {
   return (await response.json()) as T;
 };
 
+// Throws rather than defaulting to "not found". The filter grammar below is
+// unverified against a live server: if this Twenty version rejects `limit`,
+// uses a different operator syntax, or nests results differently, a silent
+// `null` would make every lookup miss, every record be created afresh, and a
+// second run duplicate the entire import — while reporting a clean run with
+// zero failures. Failing loudly on the first lookup is strictly better.
 const firstRecord = (payload: unknown, plural: string): TwentyRecord | null => {
-  const data = (payload as { data?: Record<string, TwentyRecord[]> }).data;
-  const records = data?.[plural] ?? [];
-  return records.length > 0 ? records[0] : null;
+  const data = (payload as { data?: unknown } | null)?.data;
+  const records = data && typeof data === 'object'
+    ? (data as Record<string, unknown>)[plural]
+    : undefined;
+
+  if (!Array.isArray(records)) {
+    const shape = data && typeof data === 'object'
+      ? `data keys: ${Object.keys(data as object).join(', ') || 'none'}`
+      : `data was ${data === undefined ? 'missing' : JSON.stringify(data)}`;
+    throw new Error(
+      `Twenty GET /${plural} returned an unexpected shape: expected data.${plural} to be an array (${shape}). `
+      + 'The REST filter/response grammar does not match what this importer assumes.',
+    );
+  }
+
+  return records.length > 0 ? (records[0] as TwentyRecord) : null;
 };
 
 export const createTwentyClient = () => ({

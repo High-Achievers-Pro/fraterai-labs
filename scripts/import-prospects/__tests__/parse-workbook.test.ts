@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseWorkbook, parseSuppressionList } from '../parse-workbook';
+import { parseWorkbook, parseSuppressionList, readSheet, MASTER_SHEET } from '../parse-workbook';
 
 const FIXTURE = 'scripts/import-prospects/__tests__/fixtures/mini.xlsx';
 
@@ -30,8 +30,17 @@ describe('parseWorkbook', () => {
     expect(suppressed).toEqual([{ name: 'Excluded Corp', reason: 'Exclude from additional list' }]);
   });
 
-  it('throws if the master sheet is missing', async () => {
+  it('throws if the named sheet is missing from the workbook', async () => {
+    await expect(readSheet(FIXTURE, 'No Such Sheet'))
+      .rejects.toThrow('Sheet "No Such Sheet" not found');
+  });
+
+  it('finds the master sheet in the fixture', async () => {
+    await expect(readSheet(FIXTURE, MASTER_SHEET)).resolves.toBeDefined();
+  });
+
+  it('throws if the workbook file does not exist', async () => {
     await expect(parseWorkbook('scripts/import-prospects/__tests__/fixtures/does-not-exist.xlsx'))
-      .rejects.toThrow();
+      .rejects.toThrow(/ENOENT/);
   });
 });
