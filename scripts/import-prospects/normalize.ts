@@ -15,10 +15,14 @@ export const normalizeSchool = (raw: string): PersonInput['school'] => {
   return null;
 };
 
+// Returns null for anything unrecognized rather than defaulting, so the caller
+// can warn instead of silently asserting a headcount claim the sheet never
+// made. Mirrors normalizeAlumniPath / normalizeSchool.
 export const normalizeHeadcountStatus = (raw: string): CompanyInput['headcountStatus'] => {
   const value = raw.trim().toLowerCase();
   if (value.includes('likely startup')) return 'LIKELY_STARTUP';
-  return 'NEEDS_VERIFICATION';
+  if (value.includes('needs headcount verification')) return 'NEEDS_VERIFICATION';
+  return null;
 };
 
 export const splitFullName = (raw: string): { firstName: string; lastName: string } => {
@@ -30,9 +34,14 @@ export const splitFullName = (raw: string): { firstName: string; lastName: strin
 export const isSearchUrl = (raw: string): boolean =>
   raw.includes('google.com/search') || raw.includes('bing.com/search');
 
+// domainName is the People Data Labs enrichment match key, so it must only
+// ever hold a real company URL. A third of the sheet's Website cells are
+// "google.com/search?q=<Company>+official+website" placeholders; those are
+// rejected here and the caller routes them to researchLinks instead.
 export const toDomainName = (raw: string): CompanyInput['domainName'] => {
   const value = raw.trim();
-  return value ? { primaryLinkUrl: value } : undefined;
+  if (!value || isSearchUrl(value)) return undefined;
+  return { primaryLinkUrl: value };
 };
 
 export const buildResearchLinks = (

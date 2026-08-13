@@ -35,8 +35,9 @@ describe('normalizeHeadcountStatus', () => {
     expect(normalizeHeadcountStatus('Likely startup; verify 50–500')).toBe('LIKELY_STARTUP');
   });
 
-  it('defaults to needing verification', () => {
-    expect(normalizeHeadcountStatus('')).toBe('NEEDS_VERIFICATION');
+  it('returns null for unrecognized input rather than guessing NEEDS_VERIFICATION', () => {
+    expect(normalizeHeadcountStatus('')).toBeNull();
+    expect(normalizeHeadcountStatus('300 employees')).toBeNull();
   });
 });
 
@@ -72,6 +73,12 @@ describe('toDomainName', () => {
 
   it('returns undefined for blanks', () => {
     expect(toDomainName('')).toBeUndefined();
+  });
+
+  // domainName is the enrichment match key; a search URL there poisons it.
+  it('rejects search URLs instead of storing them as a domain', () => {
+    expect(toDomainName('https://www.google.com/search?q=Acme+official+website')).toBeUndefined();
+    expect(toDomainName('https://www.bing.com/search?q=Acme')).toBeUndefined();
   });
 });
 

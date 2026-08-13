@@ -38,7 +38,7 @@ export type CompanyInput = {
   segment: string;
   region: string;
   country: string;
-  headcountStatus: 'NEEDS_VERIFICATION' | 'LIKELY_STARTUP' | 'VERIFIED_IN_ICP' | 'VERIFIED_OUTSIDE_ICP';
+  headcountStatus: 'NEEDS_VERIFICATION' | 'LIKELY_STARTUP' | 'VERIFIED_IN_ICP' | 'VERIFIED_OUTSIDE_ICP' | null;
   researchLinks?: { primaryLinkUrl: string; secondaryLinks?: { url: string }[] };
 };
 
