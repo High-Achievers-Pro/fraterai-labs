@@ -20,32 +20,78 @@ const emptyCounts = () => ({ companies: 0, people: 0, prospects: 0, outreaches: 
 // processing an earlier row might not yet be visible to a later row's
 // findByFilter (replica lag, index lag, eventual consistency, etc.),
 // silently producing duplicate companies/people even though queueId-based
-// prospect identity is unaffected. The cache key is normalized (trimmed +
-// lowercased) so trivial casing/whitespace differences between rows still
-// collapse to one entry; the filter string sent to the server is left
-// untouched.
+// prospect identity is unaffected.
+//
+// The key is the filter string itself, so the cache and the server are asked
+// the exact same identity question. An earlier version lowercased the cache
+// key while sending the filter verbatim: within a run "Acme Co" and "acme co"
+// collapsed to one record, but across runs the case-sensitive server filter
+// would miss and create a duplicate. One definition of identity, used in both
+// places, is better than two that disagree.
 type UpsertCache = Map<string, string>;
 
-const cacheKey = (plural: string, rawKey: string) => `${plural}:${rawKey.trim().toLowerCase()}`;
+// Fields that carry pipeline state rather than spreadsheet content. The sheet
+// has no column that can advance them — buildPlan hardcodes SOURCED / DRAFT /
+// HUMAN and derives directEmailStatus from a permanently empty column — so
+// re-sending them on update would drag work done inside the CRM backwards: a
+// prospect advanced to CONTACTED reset to SOURCED, an outreach marked SENT
+// reset to DRAFT while keeping its sentAt. They are written once, at create.
+const CREATE_ONLY_FIELDS: Record<string, readonly string[]> = {
+  companies: ['headcountStatus'],
+  people: ['directEmailStatus'],
+  prospects: ['stage'],
+  outreaches: ['status', 'generatedBy', 'model'],
+};
+
+// Keys whose value is `undefined` are dropped explicitly, not left to
+// JSON.stringify: an optional the sheet does not supply (no direct email, no
+// real website) must never blank out a value a human filled in in the CRM.
+const bodyFor = (
+  plural: string, body: Record<string, unknown>, mode: 'create' | 'update',
+): Record<string, unknown> => {
+  const createOnly = CREATE_ONLY_FIELDS[plural] ?? [];
+  return Object.fromEntries(
+    Object.entries(body).filter(([key, value]) => (
+      value !== undefined && (mode === 'create' || !createOnly.includes(key))
+    )),
+  );
+};
+
+const createdRecordId = (plural: string, created: { data: unknown }): string => {
+  const data = created?.data;
+  const record = data && typeof data === 'object'
+    ? (Object.values(data as Record<string, unknown>)[0] as { id?: unknown } | undefined)
+    : undefined;
+  const id = record && typeof record === 'object' ? record.id : undefined;
+  if (typeof id !== 'string' || id === '') {
+    // Returning undefined here would create the dependent person/prospect with
+    // an undefined relation id: silently unlinked records, no error.
+    const keys = data && typeof data === 'object' ? Object.keys(data as object).join(', ') : '';
+    throw new Error(
+      `Twenty create ${plural} returned no usable record id (data keys: ${keys || 'none'})`,
+    );
+  }
+  return id;
+};
 
 const upsert = async (
   client: TwentyClient, plural: string, filter: string, body: Record<string, unknown>,
-  result: ApplyResult, cache: UpsertCache, rawCacheKey: string,
+  result: ApplyResult, cache: UpsertCache,
 ): Promise<string> => {
-  const key = cacheKey(plural, rawCacheKey);
+  const key = `${plural}:${filter}`;
   const cached = cache.get(key);
   if (cached) return cached;
 
   const existing = await client.findByFilter(plural, filter);
   if (existing) {
-    await client.update(plural, existing.id, body);
+    await client.update(plural, existing.id, bodyFor(plural, body, 'update'));
     result.updated[plural as keyof ApplyResult['updated']] += 1;
     cache.set(key, existing.id);
     return existing.id;
   }
-  const created = await client.create(plural, body);
+  const created = await client.create(plural, bodyFor(plural, body, 'create'));
   result.created[plural as keyof ApplyResult['created']] += 1;
-  const id = Object.values(created.data)[0].id;
+  const id = createdRecordId(plural, created);
   cache.set(key, id);
   return id;
 };
@@ -54,27 +100,29 @@ const applyEntry = async (
   entry: PlanEntry, client: TwentyClient, result: ApplyResult, cache: UpsertCache,
 ) => {
   const companyId = await upsert(
-    client, 'companies', `name[eq]:${entry.company.name}`, entry.company as never, result,
-    cache, entry.company.name,
+    client, 'companies', `name[eq]:${entry.company.name}`,
+    entry.company, result, cache,
   );
 
-  const personFilter = `name.firstName[eq]:${entry.person.name.firstName},name.lastName[eq]:${entry.person.name.lastName}`;
+  // Person identity is scoped to the company. Name alone merges different
+  // people who happen to share a name (the real sheet has one name spanning
+  // ten companies), linking a prospect to someone else's employee and
+  // discarding the later rows' title and evidence.
+  const personFilter = `name.firstName[eq]:${entry.person.name.firstName},name.lastName[eq]:${entry.person.name.lastName},companyId[eq]:${companyId}`;
   const personId = await upsert(
-    client, 'people', personFilter, { ...entry.person, companyId } as never, result,
-    cache, `${entry.person.name.firstName} ${entry.person.name.lastName}`,
+    client, 'people', personFilter,
+    { ...entry.person, companyId }, result, cache,
   );
 
   const prospectId = await upsert(
     client, 'prospects', `queueId[eq]:${entry.prospect.queueId}`,
-    { ...entry.prospect, companyId, personId } as never, result,
-    cache, entry.prospect.queueId,
+    { ...entry.prospect, companyId, personId }, result, cache,
   );
 
   for (const outreach of entry.outreaches) {
     await upsert(
       client, 'outreaches', `title[eq]:${outreach.title}`,
-      { ...outreach, prospectId } as never, result,
-      cache, outreach.title,
+      { ...outreach, prospectId }, result, cache,
     );
   }
 };
