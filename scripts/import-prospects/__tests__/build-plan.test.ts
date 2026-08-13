@@ -31,6 +31,13 @@ describe('buildPlan', () => {
     expect(entry.company.domainName).toEqual({ primaryLinkUrl: 'https://acme.test/' });
   });
 
+  it('routes person search URLs to researchLinks and never to a profile field', () => {
+    const [entry] = buildPlan([row()], []).entries;
+    expect(entry.person.researchLinks?.primaryLinkUrl).toContain('google.com/search');
+    expect(entry.person.evidenceUrl).toEqual({ primaryLinkUrl: 'https://evidence.test/a' });
+    expect(JSON.stringify(entry.person)).not.toContain('linkedinLink');
+  });
+
   it('imports every prospect at SOURCED', () => {
     const [entry] = buildPlan([row()], []).entries;
     expect(entry.prospect.stage).toBe('SOURCED');
