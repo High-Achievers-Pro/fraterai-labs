@@ -31,7 +31,7 @@ These names are referenced verbatim by Plans B, C, and D. Do not rename.
 | App package | `frater-crm` (dir `twenty-app/`) |
 | Object | `prospect` / `prospects` |
 | Object | `outreach` / `outreaches` |
-| Prospect fields | `queueId`, `stage`, `leadSource`, `qualificationStatus`, `recommendedAiWorkflow`, `disqualificationReason`, `importNotes`, `company`, `person`, `outreaches` |
+| Prospect fields | `queueId`, `stage`, `leadSource`, `qualificationStatus`, `recommendedAiWorkflow`, `disqualificationReason`, `importNotes`, `company`, `person`, `outreaches`, `owner` |
 | Outreach fields | `title`, `channel`, `subject`, `body`, `characterCount`, `status`, `sentAt`, `generatedBy`, `model`, `prospect` |
 | Company added fields | `segment`, `region`, `country`, `headcountStatus`, `researchLinks`, `isSuppressed`, `suppressionReason`, `prospects` |
 | Person added fields | `school`, `alumniPath`, `targetRole`, `evidenceUrl`, `evidenceSummary`, `directEmailStatus`, `researchLinks`, `prospects` |
@@ -232,7 +232,7 @@ git commit -m "docs: record workspace hardening and owner mapping"
 
 Every identifier is fixed forever once deployed, so generate them all now.
 
-Run: `for i in $(seq 1 40); do uuidgen | tr 'A-Z' 'a-z'; done`
+Run: `for i in $(seq 1 42); do uuidgen | tr 'A-Z' 'a-z'; done`
 
 - [ ] **Step 2: Create the package manifest**
 
@@ -312,6 +312,10 @@ export const PERSON_EVIDENCE_URL_FIELD_ID = '<uuid-37>';
 export const PERSON_EVIDENCE_SUMMARY_FIELD_ID = '<uuid-38>';
 export const PERSON_DIRECT_EMAIL_STATUS_FIELD_ID = '<uuid-39>';
 export const PERSON_RESEARCH_LINKS_FIELD_ID = '<uuid-40>';
+
+// Prospect owner — relation to the standard workspaceMember object
+export const PROSPECT_OWNER_FIELD_ID = '<uuid-41>';
+export const WORKSPACE_MEMBER_PROSPECTS_FIELD_ID = '<uuid-42>';
 ```
 
 - [ ] **Step 4: Add the application config and role**
@@ -667,7 +671,7 @@ git commit -m "feat(crm): define Outreach object and Prospect relation"
 ### Task 6: Extend Company and Person with research fields
 
 **Files:**
-- Create: `twenty-app/src/fields/company-segment.field.ts`, `company-region.field.ts`, `company-country.field.ts`, `company-headcount-status.field.ts`, `company-research-links.field.ts`, `company-is-suppressed.field.ts`, `company-suppression-reason.field.ts`, `person-school.field.ts`, `person-alumni-path.field.ts`, `person-target-role.field.ts`, `person-evidence-url.field.ts`, `person-evidence-summary.field.ts`, `person-direct-email-status.field.ts`, `person-research-links.field.ts`, `prospect-company.field.ts`, `company-prospects.field.ts`, `prospect-person.field.ts`, `person-prospects.field.ts`
+- Create: `twenty-app/src/fields/company-segment.field.ts`, `company-region.field.ts`, `company-country.field.ts`, `company-headcount-status.field.ts`, `company-research-links.field.ts`, `company-is-suppressed.field.ts`, `company-suppression-reason.field.ts`, `person-school.field.ts`, `person-alumni-path.field.ts`, `person-target-role.field.ts`, `person-evidence-url.field.ts`, `person-evidence-summary.field.ts`, `person-direct-email-status.field.ts`, `person-research-links.field.ts`, `prospect-company.field.ts`, `company-prospects.field.ts`, `prospect-person.field.ts`, `person-prospects.field.ts`, `prospect-owner.field.ts`, `workspace-member-prospects.field.ts`
 
 **Interfaces:**
 - Produces: every custom field named in the registry. The importer (Tasks 9–13) and Plan C's agents write these exact names.
@@ -783,17 +787,52 @@ Repeat for `prospect-person.field.ts` / `person-prospects.field.ts` using `PROSP
 
 MANY_TO_ONE is correct on both: 34 sheet rows share a company, and a person could plausibly be re-prospected later.
 
-- [ ] **Step 6: Typecheck, deploy, verify**
+- [ ] **Step 6: Add the Prospect owner relation**
+
+Every one of the 252 rows carries `Owner = Seth`, and the pipeline is unusable without assignment — "who is chasing this?" is the first question anyone asks of a prospect list, and every progress report groups by it.
+
+`twenty-app/src/fields/prospect-owner.field.ts`:
+
+```ts
+import { defineField, FieldType, OnDeleteAction, RelationType, STANDARD_OBJECT_UNIVERSAL_IDENTIFIERS } from 'twenty-sdk/define';
+import {
+  PROSPECT_OBJECT_ID, PROSPECT_OWNER_FIELD_ID, WORKSPACE_MEMBER_PROSPECTS_FIELD_ID,
+} from '../constants/universal-identifiers';
+
+export default defineField({
+  universalIdentifier: PROSPECT_OWNER_FIELD_ID,
+  objectUniversalIdentifier: PROSPECT_OBJECT_ID,
+  type: FieldType.RELATION,
+  name: 'owner',
+  label: 'Owner',
+  description: 'The Frater team member responsible for this prospect',
+  icon: 'IconUserCircle',
+  relationTargetObjectMetadataUniversalIdentifier:
+    STANDARD_OBJECT_UNIVERSAL_IDENTIFIERS.workspaceMember.universalIdentifier,
+  relationTargetFieldMetadataUniversalIdentifier: WORKSPACE_MEMBER_PROSPECTS_FIELD_ID,
+  universalSettings: {
+    relationType: RelationType.MANY_TO_ONE,
+    onDelete: OnDeleteAction.SET_NULL,
+    joinColumnName: 'ownerId',
+  },
+});
+```
+
+Create the reverse as `workspace-member-prospects.field.ts`: `universalIdentifier: WORKSPACE_MEMBER_PROSPECTS_FIELD_ID`, `objectUniversalIdentifier: STANDARD_OBJECT_UNIVERSAL_IDENTIFIERS.workspaceMember.universalIdentifier`, `name: 'prospects'`, `label: 'Prospects'`, target object `PROSPECT_OBJECT_ID`, target field `PROSPECT_OWNER_FIELD_ID`, `relationType: RelationType.ONE_TO_MANY`.
+
+`SET_NULL` on delete is deliberate: removing a team member must orphan their prospects for reassignment, never delete them.
+
+- [ ] **Step 7: Typecheck, deploy, verify**
 
 Run: `cd twenty-app && yarn typecheck && yarn deploy`
 
-In Twenty, open a Company record and confirm Segment, Region, Country, Headcount status, Research links, Suppressed, and Prospects all appear. Do the same on a Person record.
+In Twenty, open a Company record and confirm Segment, Region, Country, Headcount status, Research links, Suppressed, and Prospects all appear. Do the same on a Person record. Then open a Prospect and confirm Owner renders as a workspace-member picker listing the members invited in Task 2 — not a free-text box.
 
-- [ ] **Step 7: Commit**
+- [ ] **Step 8: Commit**
 
 ```bash
 git add twenty-app/src/fields
-git commit -m "feat(crm): extend Company and Person with research fields and Prospect relations"
+git commit -m "feat(crm): extend Company and Person with research fields, add Prospect relations and owner"
 ```
 
 ---
@@ -1655,7 +1694,9 @@ git commit -m "feat(import): build import plan from parsed rows"
 - Create: `scripts/import-prospects/twenty-rest.ts`, `scripts/import-prospects/apply-plan.ts`, `scripts/import-prospects/__tests__/apply-plan.test.ts`
 
 **Interfaces:**
-- Produces: `TwentyClient` with `findCompanyByName`, `createCompany`, `updateCompany`, `findPersonByName`, `createPerson`, `updatePerson`, `findProspectByQueueId`, `createProspect`, `updateProspect`, `findOutreachByTitle`, `createOutreach`, `updateOutreach`, `findWorkspaceMemberByEmail`; and `applyPlan(plan, client, options)`.
+- Produces: `createTwentyClient()` returning a `TwentyClient` with three generic methods — `findByFilter(plural, filter)`, `create(plural, body)`, `update(plural, id, body)` — and `applyPlan(plan, client, options)`.
+
+The client is deliberately generic rather than one named method per entity: four object types times three operations would be twelve near-identical wrappers over the same two lines of `fetch`. Task 13 adds owner resolution on top of the same three methods.
 
 - [ ] **Step 1: Write the REST client**
 
@@ -1939,6 +1980,25 @@ main().catch((error) => {
   process.exit(1);
 });
 ```
+
+- [ ] **Step 1b: Resolve owners to workspace members**
+
+`buildPlan` preserves the sheet's `Owner` as text in `importNotes`; it does not assign anyone. Task 6 added a real `owner` relation on Prospect, and it must be populated — all 252 rows read `Owner = Seth`, and an unassigned pipeline cannot be reported on.
+
+Before applying, the CLI fetches workspace members once and builds a lookup:
+
+```ts
+const loadOwnerMap = async (client: TwentyClient): Promise<Map<string, string>> => {
+  const response = await client.findByFilter('workspaceMembers', '');
+  // Build name -> id, keyed on lowercased first name AND full name, so the
+  // sheet's informal "Seth" matches a member recorded as "Seth Surname".
+  ...
+};
+```
+
+Pass the map into `applyPlan` as an option and set `ownerId` on each prospect body when the sheet's owner resolves. When it does **not** resolve, record a warning naming the unmatched owner and still import the row — an unassigned prospect is recoverable; a failed import of 252 rows is not.
+
+Print the resolution summary before the dry run: how many distinct owner strings were found and which mapped. Expect `Seth → 1 member` and nothing unmatched. If `Seth` does not resolve, stop and fix the Task 2 member invitations rather than importing 252 unowned prospects.
 
 - [ ] **Step 2: Dry-run against the real workbook**
 
