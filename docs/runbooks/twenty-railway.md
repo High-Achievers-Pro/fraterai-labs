@@ -152,14 +152,14 @@ before the import runs.
 
 | Sheet `Owner` | Twenty workspace member |
 |---|---|
-| `Seth` | _to be filled in during Task 2_ |
+| `Seth` | Business partner — _address to be filled in during Task 2_ |
 
 ## Status
 
 - [x] Services provisioned and healthy; 182 migrations applied
 - [x] Custom domain registered in Railway
-- [ ] DNS records created — **blocked on registrar access**
-- [ ] Certificate issued and `https://crm.fraterailabs.com` reachable
+- [x] DNS records created at Namecheap (CNAME + TXT), both propagated
+- [x] Certificate issued; `https://crm.fraterailabs.com` serves with a valid cert
 - [ ] Admin account created
 - [ ] Workspace API key minted
 - [ ] Bootstrap window closed (Task 2)
