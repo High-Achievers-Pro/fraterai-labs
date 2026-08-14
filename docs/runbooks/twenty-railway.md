@@ -154,12 +154,58 @@ before the import runs.
 |---|---|
 | `Seth` | Business partner — _address to be filled in during Task 2_ |
 
+## Verified against the live instance (2026-08-13)
+
+These retire the top three items of the first-live-run checklist in the Plan A final
+review. All were previously unverifiable because no server existed.
+
+**REST filter grammar works, and genuinely evaluates.** This was the highest-risk unknown:
+if filters silently matched nothing, every import run would create duplicates while
+reporting success.
+
+| Query | Result |
+|---|---|
+| `name[eq]:Notion` | matched 1 |
+| `name[eq]:ZzzNoSuch` | matched 0 |
+| `name.firstName[eq]:Ivan,name.lastName[eq]:Zhao` | matched 1 |
+| `name.firstName[eq]:Ivan,name.lastName[eq]:ZzzWrong` | **matched 0** |
+
+The last row is the one that matters — the comma-AND is really applied, not ignored. Both
+raw brackets and `encodeURIComponent`-encoded forms work, so `twenty-rest.ts` is correct
+as written.
+
+**POST envelope is `{ data: { createCompany: {...} } }`.** So `apply-plan.ts`'s
+`Object.values(created.data)[0].id` yields a real id string — the failure mode behind
+finding I3 does not occur on this version.
+
+**Composite fields round-trip.** `domainName` written as `{primaryLinkUrl}` reads back as
+`{primaryLinkLabel, primaryLinkUrl, secondaryLinks}`.
+
+**GraphQL `workspaceMembers` works** with the exact query Plan B's membership gate uses
+(`edges { node { id userEmail name { firstName lastName } } }`).
+
+When testing filters with curl, pass `-g/--globoff` — curl otherwise treats `[` and `]`
+as a glob range and never sends the request.
+
+## ⚠️ Seed data must be deleted before the import
+
+Twenty seeded the new workspace with demo records: **5 companies, 5 people, 6
+opportunities** (Notion, Airbnb, Figma, Stripe, Anthropic and their founders).
+
+Task 13's acceptance gate expects exactly 218 companies and 252 people. Leaving the seed
+data in place makes those numbers 223 and 257, so the gate would fail — or worse, be
+"corrected" to the wrong expectation. Delete all demo records before the first
+`--apply`, and re-confirm the counts are zero beforehand.
+
 ## Status
 
 - [x] Services provisioned and healthy; 182 migrations applied
 - [x] Custom domain registered in Railway
 - [x] DNS records created at Namecheap (CNAME + TXT), both propagated
 - [x] Certificate issued; `https://crm.fraterailabs.com` serves with a valid cert
-- [ ] Admin account created
-- [ ] Workspace API key minted
+- [x] Admin account created — `fraterai@fraterailabs.com` (Miguel Twahirwa), workspace `b51d41d5-f94b-420c-9278-d62eaf25d5db`
+- [x] Workspace API key minted and verified against REST + GraphQL
+- [ ] **Replace the first API key** — it was pasted into a chat transcript; revoke and re-mint
+- [ ] Delete the 16 seed/demo records
 - [ ] Bootstrap window closed (Task 2)
+- [ ] Seth invited and owner mapping filled in
