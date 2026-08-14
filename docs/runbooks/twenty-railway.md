@@ -164,6 +164,32 @@ Postgres is the Railway managed template, so backups follow Railway's plan-level
 **verify what that policy actually is for this account before the CRM holds real
 pipeline data**, and take a manual dump before any upgrade.
 
+## Google OAuth
+
+Client lives in Google Cloud project **FraterAI labs CRM**. Consent screen must be
+**Internal** — External would require Google verification and would let any Google account
+reach the consent screen.
+
+Consent-screen **Authorized domains** take bare registrable domains only
+(`fraterailabs.com`), which covers both `crm.` and `www.` subdomains. Full URLs with paths
+are rejected there with "must be a top private domain" — those belong in the client's
+**Authorized redirect URIs** instead:
+
+```
+https://crm.fraterailabs.com/auth/google/redirect
+https://crm.fraterailabs.com/auth/google-apis/get-access-token
+https://www.fraterailabs.com/api/auth/google/callback   (Plan B portal)
+```
+
+One client serves both the CRM and the portal, which is what makes the portal → CRM hop a
+single "Continue as…" click.
+
+Credentials are stored locally, gitignored, at `.env.google-id.local` and
+`.env.google-secret.local`, and were written into Railway via `--set-from-stdin`.
+
+`AUTH_GOOGLE_CALLBACK_URL` on the server must match a registered redirect URI
+character-for-character, or sign-in fails with `redirect_uri_mismatch`.
+
 ## Owner mapping
 
 The prospect sheet's `Owner` column contains `Seth` on all 252 rows. Task 6 defines a
@@ -228,5 +254,11 @@ data in place makes those numbers 223 and 257, so the gate would fail — or wor
 - [x] Workspace API key minted and verified against REST + GraphQL
 - [ ] **Replace the first API key** — it was pasted into a chat transcript; revoke and re-mint
 - [ ] Delete the 16 seed/demo records
-- [ ] Bootstrap window closed (Task 2)
+- [x] Google OAuth client created (Internal); `AUTH_GOOGLE_*` set on both services
+- [x] `authProviders.google = true` confirmed on the live instance
+- [ ] Google sign-in tested end to end — **required before disabling password auth**
+- [ ] `AUTH_PASSWORD_ENABLED=false`
+- [ ] Approved access domain `fraterailabs.com` added and validated
+- [ ] `workspaceDiscoverability` set deliberately
+- [ ] Non-member rejection tested with a personal Gmail account
 - [ ] Seth invited and owner mapping filled in
