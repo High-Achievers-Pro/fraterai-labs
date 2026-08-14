@@ -105,7 +105,32 @@ Consequently a stranger who reaches the sign-up form can create a **user record 
 workspace** — noise, and a verification email — but cannot reach any CRM data. That is a
 materially smaller exposure than "signup is open" implies.
 
-The real password toggle is `AUTH_PASSWORD_ENABLED` (default `true`), which does exist.
+The real password toggle is `AUTH_PASSWORD_ENABLED` (default `true`), which does exist and
+is now `false` — Google is the only provider.
+
+### Why no approved access domain was added
+
+Plan A Task 2 called for adding `fraterailabs.com` as an approved access domain, carried
+over from the spec's "domain-locked" framing. On v2.31.1 that step would **weaken** the
+posture, not strengthen it.
+
+An approved access domain grants entry only when the workspace is also `PUBLIC`, and its
+effect is to let anyone holding an address at that domain admit themselves without an
+invitation. With no approved domain configured, the only route in is an explicit
+invitation — strictly tighter, and it still satisfies "only Frater members get in".
+
+The team is two people sharing one account, so the self-join convenience buys nothing.
+Add an approved domain only if you later want new `@fraterailabs.com` staff to onboard
+themselves without being invited, and understand that you are trading a control for that
+convenience.
+
+### Recovering from a lockout
+
+Google is now the only provider. If the OAuth client breaks — secret rotated, consent
+screen changed, project deleted — nobody can sign in. Recovery is to set
+`AUTH_PASSWORD_ENABLED=true` on `twenty-server` in Railway and redeploy, which restores
+the password login. Railway access is therefore the break-glass path and should not
+depend on the CRM.
 
 ### Ordering trap when locking down
 
@@ -256,9 +281,10 @@ data in place makes those numbers 223 and 257, so the gate would fail — or wor
 - [ ] Delete the 16 seed/demo records
 - [x] Google OAuth client created (Internal); `AUTH_GOOGLE_*` set on both services
 - [x] `authProviders.google = true` confirmed on the live instance
-- [ ] Google sign-in tested end to end — **required before disabling password auth**
-- [ ] `AUTH_PASSWORD_ENABLED=false`
-- [ ] Approved access domain `fraterailabs.com` added and validated
-- [ ] `workspaceDiscoverability` set deliberately
+- [x] Google sign-in tested end to end and works
+- [x] `AUTH_PASSWORD_ENABLED=false` — Google is the only auth provider
+- [x] First API key revoked (old key returns 403) and replaced
+- [x] **No approved access domain added — deliberate, see below**
+- [ ] `workspaceDiscoverability` confirmed not `PUBLIC`
 - [ ] Non-member rejection tested with a personal Gmail account
 - [ ] Seth invited and owner mapping filled in
