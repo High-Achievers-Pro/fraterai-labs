@@ -280,11 +280,21 @@ requirement only — never the membership requirement — so revoking someone in
 locks them out of the portal on their next request.
 
 The allowlist exists because Twenty invitations carry no domain restriction, so a
-collaborator on another email domain can legitimately be a workspace member. Note it is
-**inert while the Google consent screen is `Internal`**: Internal blocks non-Workspace
-accounts at Google before our code runs. It becomes effective only if the consent screen
-is switched to `External`, which also means any Google account can reach the consent
-screen and this gate becomes the sole barrier.
+collaborator on another email domain can legitimately be a workspace member.
+
+Such a collaborator cannot use Google at all: they sign into Twenty with a password, and
+the Internal consent screen blocks non-Workspace accounts before our code runs. The
+portal therefore offers a second door — **magic-link sign-in** — for allowlisted
+addresses: enter your email, receive a short-lived signed link, click it. No password
+store and no database, so the stateless design holds.
+
+Both doors converge on the same rule: allowlist or domain, **and always** active
+workspace membership, re-checked at redemption so revoking someone in Twenty invalidates
+links already in flight.
+
+Because magic-link tokens and session cookies are signed with the same secret, both carry
+a `purpose` field that is verified on read. Without that domain separation the two token
+types would be interchangeable.
 
 Twenty is hardened independently: public signup disabled, invitation-only,
 `approved-access-domain` locked to the Workspace domain, Google OAuth sharing the same

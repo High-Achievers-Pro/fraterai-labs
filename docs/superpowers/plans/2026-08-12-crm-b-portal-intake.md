@@ -18,7 +18,8 @@
 - **`TWENTY_API_KEY` must never reach the browser.** Server-only modules; no `NEXT_PUBLIC_` prefix.
 - The portal must be **undiscoverable**: no nav or footer link, `noindex`, and a `robots.txt` disallow.
 - Access requires active Twenty workspace membership **always**, plus EITHER a Google `hd` claim matching the domain OR an exact match in `PORTAL_EMAIL_ALLOWLIST`. The allowlist is an exception to the domain check only — never to the membership check.
-- **The allowlist is inert while the Google consent screen is `Internal`.** Internal blocks non-Workspace accounts at Google, before our code runs, so an allowlisted outside address cannot authenticate at all. It becomes live only if the consent screen is switched to `External`. Build it, but do not treat it as working access for outside collaborators until that switch is made.
+- **Google is not a viable door for outside collaborators.** Twenty invitations carry no domain restriction, so a collaborator on another email domain is a legitimate workspace member — but they sign into Twenty with a password, and the Internal Google consent screen blocks non-Workspace accounts before our code runs. The allowlist is therefore paired with **magic-link sign-in** (Task 5b); without it the allowlist would be unreachable code.
+- **Two token types share `SESSION_SECRET`, so both MUST carry a `purpose` field.** A magic-link token and a session cookie signed by the same key with no domain separation are interchangeable — an attacker who obtains either could present it as the other. Verify `purpose` on every read.
 - Inbound writes go to **Twenty first**; the HubSpot mirror is best-effort and must never fail the request.
 - This Next.js version has breaking changes — **read `node_modules/next/dist/docs/` before writing framework code** (per `AGENTS.md`).
 - Branch: `feat/twenty-crm-portal`.
@@ -870,6 +871,139 @@ export const POST = async (request: NextRequest) => {
 ```bash
 git add lib/server/auth-gate.ts lib/server/__tests__/auth-gate.test.ts app/api/auth
 git commit -m "feat(portal): add Google auth routes with domain and membership gates"
+```
+
+---
+
+### Task 5b: Magic-link sign-in for allowlisted collaborators
+
+**Files:**
+- Create: `lib/server/magic-link.ts`, `lib/server/email.ts`, `lib/server/__tests__/magic-link.test.ts`, `app/api/auth/magic-link/request/route.ts`, `app/api/auth/magic-link/verify/route.ts`
+- Modify: `app/portal/login/page.tsx`, `.env.example`
+
+**Interfaces:**
+- Consumes: `evaluateAccess` semantics from Task 5, `findActiveWorkspaceMember`, `createSessionCookie`.
+- Produces: `createMagicToken(email)`, `readMagicToken(token)`, `sendMagicLinkEmail(email, url)`, `MAGIC_LINK_TTL_SECONDS`.
+
+Outside collaborators cannot use Google (see Global Constraints). This gives them a second door that needs no password store and no database, so the "no DB in the Next.js layer" decision survives.
+
+- [ ] **Step 1: Add email config**
+
+Append to `.env.example`:
+
+```
+RESEND_API_KEY=
+PORTAL_EMAIL_FROM=portal@fraterailabs.com
+```
+
+Resend is the default because it is a single HTTPS call from Vercel with no SMTP connection handling. Google Workspace SMTP with an app password also works and adds no vendor — but an app password is a long-lived credential with full mailbox send rights, which is a worse thing to hold than a scoped API key.
+
+- [ ] **Step 2: Write the failing test**
+
+```ts
+import { beforeEach, describe, expect, it } from 'vitest';
+import { createMagicToken, readMagicToken } from '../magic-link';
+import { createSessionCookie } from '../session';
+
+beforeEach(() => {
+  process.env.SESSION_SECRET = 'test-secret-value';
+  process.env.PORTAL_EMAIL_ALLOWLIST = 'contractor@partner.test';
+});
+
+describe('magic link tokens', () => {
+  it('round-trips the email', async () => {
+    const t = await createMagicToken('contractor@partner.test');
+    expect((await readMagicToken(t))?.email).toBe('contractor@partner.test');
+  });
+
+  it('normalises the email to lowercase', async () => {
+    const t = await createMagicToken('Contractor@Partner.test');
+    expect((await readMagicToken(t))?.email).toBe('contractor@partner.test');
+  });
+
+  it('rejects a tampered payload', async () => {
+    const t = await createMagicToken('contractor@partner.test');
+    const [body, sig] = t.split('.');
+    const forged = Buffer.from(JSON.stringify({
+      email: 'attacker@evil.test', purpose: 'magic-link', expiresAt: Date.now() + 60000,
+    })).toString('base64url');
+    expect(await readMagicToken(`${forged}.${sig}`)).toBeNull();
+  });
+
+  it('rejects an expired token', async () => {
+    const t = await createMagicToken('contractor@partner.test', -1);
+    expect(await readMagicToken(t)).toBeNull();
+  });
+
+  it('REFUSES a session cookie presented as a magic token', async () => {
+    const session = await createSessionCookie(
+      { email: 'contractor@partner.test', name: 'C', workspaceMemberId: 'wm-1' }, 3600,
+    );
+    expect(await readMagicToken(session)).toBeNull();
+  });
+
+  it('rejects a token for an address no longer on the allowlist', async () => {
+    const t = await createMagicToken('contractor@partner.test');
+    process.env.PORTAL_EMAIL_ALLOWLIST = '';
+    expect(await readMagicToken(t)).toBeNull();
+  });
+
+  it('rejects malformed input', async () => {
+    expect(await readMagicToken('')).toBeNull();
+    expect(await readMagicToken('nodot')).toBeNull();
+  });
+});
+```
+
+The session-cookie test is the important one. Both token types are signed with `SESSION_SECRET`; without a `purpose` check, a stolen session cookie would redeem as a magic link and vice versa.
+
+- [ ] **Step 3: Run it and confirm it fails**
+
+Run: `npx vitest run lib/server/__tests__/magic-link.test.ts`
+Expected: FAIL — module not found.
+
+- [ ] **Step 4: Implement**
+
+`lib/server/magic-link.ts` mirrors `session.ts`'s HMAC approach — same constant-time comparison, same verify-before-parse ordering — with three differences: the payload carries `purpose: 'magic-link'` and `readMagicToken` returns `null` unless it matches; the TTL is `MAGIC_LINK_TTL_SECONDS = 600`; and the allowlist is re-checked at redemption, so removing an address from `PORTAL_EMAIL_ALLOWLIST` invalidates links already in flight.
+
+Add `purpose: 'session'` to `session.ts`'s payload and reject anything else in `readSessionCookie`. Update its existing tests to match — this is a deliberate change to Task 3's output.
+
+- [ ] **Step 5: Implement the request route**
+
+`app/api/auth/magic-link/request/route.ts`:
+
+- Validate the email's shape.
+- **Always return the same 200 response**, whatever happens next. Any difference in status, body, or timing between "allowlisted member" and "stranger" turns this endpoint into a membership oracle.
+- Only if the address is both allowlisted **and** an active workspace member: mint a token and email `${SERVER_URL}/api/auth/magic-link/verify?token=…`.
+- Rate-limit by putting the same Cloudflare Turnstile widget used on the contact form in front of it. Without that, this is an unauthenticated endpoint that sends email on demand, which is a spam relay pointed at your own domain's reputation.
+
+- [ ] **Step 6: Implement the verify route**
+
+Validate signature → expiry → `purpose` → allowlist → **re-query `findActiveWorkspaceMember`**. Only then issue the session cookie via `createSessionCookie` and redirect to `/portal`. On any failure redirect to `/portal/login?error=link_invalid` with no detail.
+
+Re-checking membership at redemption is what keeps revocation immediate: pulling someone from the Twenty workspace kills their portal access even if they hold an unexpired link.
+
+- [ ] **Step 7: Add the email sender**
+
+`lib/server/email.ts` exports `sendMagicLinkEmail(email, url)`. Plain text is fine. State the 10-minute expiry in the body, and include a line saying to ignore the message if they did not request it.
+
+- [ ] **Step 8: Update the login page**
+
+Add a secondary path below "Continue with Google": an email field and a "Send me a sign-in link" button. After submit, always render the same "If that address has access, a link is on its way" message — matching the endpoint's non-disclosure.
+
+- [ ] **Step 9: Run the tests and verify end to end**
+
+```bash
+npx vitest run lib/server/__tests__/magic-link.test.ts lib/server/__tests__/session.test.ts
+```
+
+Then locally: request a link for an allowlisted member (arrives, works), for a non-allowlisted address (identical response, no email), and confirm an expired token is refused.
+
+- [ ] **Step 10: Commit**
+
+```bash
+git add lib/server/magic-link.ts lib/server/email.ts lib/server/__tests__/magic-link.test.ts app/api/auth/magic-link app/portal/login/page.tsx .env.example
+git commit -m "feat(portal): add magic-link sign-in for allowlisted collaborators"
 ```
 
 ---
