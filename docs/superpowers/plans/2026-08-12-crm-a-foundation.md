@@ -187,15 +187,28 @@ AUTH_GOOGLE_CLIENT_ID=<client id>
 AUTH_GOOGLE_CLIENT_SECRET=<client secret>
 AUTH_GOOGLE_CALLBACK_URL=https://crm.fraterailabs.com/auth/google/redirect
 AUTH_GOOGLE_APIS_CALLBACK_URL=https://crm.fraterailabs.com/auth/google-apis/get-access-token
-AUTH_PASSWORD_ENABLED=false
-IS_SIGN_UP_DISABLED=true
 ```
 
-`AUTH_PASSWORD_ENABLED=false` removes password login so Google is the only door. `IS_SIGN_UP_DISABLED=true` makes the workspace invitation-only.
+**Do not set `AUTH_PASSWORD_ENABLED=false` yet** — see Step 4a. And note that
+`IS_SIGN_UP_DISABLED` **does not exist in Twenty v2.x**; setting it is a silent no-op.
+Workspace access is instead governed by the approved access domain plus
+`workspaceDiscoverability` (Step 3), or by explicit invitation.
 
-- [ ] **Step 3: Add the approved access domain**
+- [ ] **Step 3: Add the approved access domain and set discoverability**
 
 In Twenty: Settings → General → Approved access domains → add `fraterailabs.com` and complete verification.
+
+Then set the workspace's discoverability deliberately. `PUBLIC` means anyone with a
+verified `@fraterailabs.com` address can self-join; `MEMBERS_AND_INVITEES` means the
+domain alone does not admit anyone and an invitation is always required. For a small
+team, prefer `MEMBERS_AND_INVITEES` — it is strictly tighter and costs one click per
+teammate.
+
+- [ ] **Step 4a: Verify Google sign-in works, THEN disable password auth**
+
+Sign out and sign back in with Google. Only once that succeeds, set
+`AUTH_PASSWORD_ENABLED=false` and redeploy. Disabling password auth before Google is
+proven working locks every account out of the workspace, owner included.
 
 - [ ] **Step 4: Verify a non-member is rejected**
 

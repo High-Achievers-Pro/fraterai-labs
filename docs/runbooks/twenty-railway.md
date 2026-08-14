@@ -81,19 +81,40 @@ Database, Redis, and bucket credentials are **not** copied anywhere — they are
 Railway variable references (`${{Postgres.DATABASE_URL}}`, `${{Redis.REDIS_URL}}`,
 `${{frater-crm-storage.*}}`) and resolve at deploy time.
 
-## ⚠️ Open bootstrap window — close in Task 2
+## How access control actually works in v2.31.1
 
-To allow the first admin account to be created before Google OAuth exists, the server is
-temporarily running with:
+**`IS_SIGN_UP_DISABLED` does not exist in this version.** It appears in Twenty's older
+docs and in Plan A's original Task 2 text, but no such config variable is defined in
+`config-variables.ts`. Setting it is a silent no-op. It was set and then removed here so
+nobody mistakes it for a control.
 
-```
-AUTH_PASSWORD_ENABLED=true
-IS_SIGN_UP_DISABLED=false
-```
+Joining a workspace requires one of exactly two things
+(`user-workspace.service.ts: findAvailableWorkspacesByEmail`):
 
-**Anyone who reaches the URL right now can create an account.** Task 2 must flip these to
-`false` and `true` respectively, add the approved access domain, and enable Google OAuth.
-Until then, treat the instance as open.
+1. **A validated approved access domain** matching the email's domain, **and** the
+   workspace's `workspaceDiscoverability` set to `PUBLIC`; or
+2. **An explicit invitation** to that address, with the workspace not `HIDDEN`.
+
+`workspaceDiscoverability` values are `PUBLIC`, `MEMBERS_AND_INVITEES`, and `HIDDEN`.
+Note the asymmetry: an approved access domain only auto-admits when the workspace is
+`PUBLIC`. With `MEMBERS_AND_INVITEES`, the domain does not grant entry on its own and
+invitations remain the only route — which is the stricter posture and appropriate for a
+two-person team.
+
+Consequently a stranger who reaches the sign-up form can create a **user record with no
+workspace** — noise, and a verification email — but cannot reach any CRM data. That is a
+materially smaller exposure than "signup is open" implies.
+
+The real password toggle is `AUTH_PASSWORD_ENABLED` (default `true`), which does exist.
+
+### Ordering trap when locking down
+
+**Do not set `AUTH_PASSWORD_ENABLED=false` until a Google sign-in has actually succeeded.**
+Password is currently the only working provider; disabling it before Google is verified
+locks everyone out of the workspace, including the owner.
+
+Correct order: configure `AUTH_GOOGLE_*` → redeploy → sign in with Google successfully →
+only then disable password auth.
 
 ## Operations
 
