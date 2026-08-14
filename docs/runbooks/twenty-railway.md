@@ -303,23 +303,44 @@ data in place makes those numbers 223 and 257, so the gate would fail — or wor
 
 ## Status
 
+**Task 1 — infrastructure: complete**
+
 - [x] Services provisioned and healthy; 182 migrations applied
-- [x] Custom domain registered in Railway
-- [x] DNS records created at Namecheap (CNAME + TXT), both propagated
-- [x] Certificate issued; `https://crm.fraterailabs.com` serves with a valid cert
+- [x] Custom domain registered; Namecheap CNAME + TXT propagated; certificate issued
+- [x] `https://crm.fraterailabs.com` serves with a valid certificate
 - [x] Admin account created — `fraterai@fraterailabs.com` (Miguel Twahirwa), workspace `b51d41d5-f94b-420c-9278-d62eaf25d5db`
-- [x] Workspace API key minted and verified against REST + GraphQL
-- [ ] **Replace the first API key** — it was pasted into a chat transcript; revoke and re-mint
-- [ ] Delete the 16 seed/demo records
-- [x] Google OAuth client created (Internal); `AUTH_GOOGLE_*` set on both services
-- [x] `authProviders.google = true` confirmed on the live instance
-- [x] Google sign-in tested end to end and works
-- [x] `AUTH_PASSWORD_ENABLED=false` — Google is the only auth provider
-- [x] First API key revoked (old key returns 403) and replaced
-- [x] **No approved access domain added — deliberate, see below**
-- [x] Password auth re-enabled as break-glass and for outside-domain invitees
-- [x] Non-member rejection **tested and passing** — a personal Gmail was blocked at Google
-- [x] `workspaceDiscoverability` — not a live control here: with no approved access domain
-      configured, `PUBLIC` grants nothing, so no setting was required. Revisit only if an
-      approved domain is ever added.
-- [ ] Seth invited and owner mapping filled in
+- [x] Workspace API key minted, verified against REST and GraphQL
+- [x] First API key revoked after transcript exposure; replacement in `.env.twenty.local` (old key confirmed returning 403)
+- [x] REST filter grammar, POST envelope, and composite-field round-trip verified against the live server
+
+**Task 2 — access control: complete**
+
+- [x] Google OAuth client created, consent screen `Internal`
+- [x] `AUTH_GOOGLE_*` set on both services; Google sign-in tested and working
+- [x] `AUTH_PASSWORD_ENABLED=true` — deliberately on, as break-glass and as the only route for outside-domain invitees
+- [x] Non-member rejection tested: a personal Gmail was blocked at Google
+- [x] No approved access domain added — deliberate; it would only enable self-join
+- [x] `workspaceDiscoverability` not a live control here, since no approved domain exists
+- [x] Owner mapping resolved: `Seth` is a business partner sharing `fraterai@fraterailabs.com`, the single workspace member
+
+**Outstanding**
+
+- [ ] Copy `APP_SECRET` and `ENCRYPTION_KEY` from Railway into the team password manager — Railway is currently the only place they exist
+- [ ] Delete the 16 seed/demo records before the import (5 companies, 5 people, 6 opportunities), or Task 13's 218/252 gate will read 223/257
+- [ ] Confirm Railway's backup policy for this account before the CRM holds real pipeline data
+- [ ] Tasks 3-7: deploy the `twenty-app` package (objects, fields, views) — now unblocked
+
+## Owner mapping
+
+`Owner` is `Seth` on all 252 sheet rows. Seth is a business partner who shares the
+`fraterai@fraterailabs.com` account rather than holding his own, so all 252 prospects map
+to the single workspace member below. Task 13's owner resolution should match on that one
+member.
+
+| Sheet `Owner` | Twenty workspace member | Member id |
+|---|---|---|
+| `Seth` | `fraterai@fraterailabs.com` | `2227b3f6-a7b9-4f31-a777-5166c672a607` |
+
+A shared login means CRM actions cannot be attributed to a specific person and portal
+access cannot distinguish the two of you. That was a deliberate choice, not an oversight —
+revisit if a third person joins.
