@@ -105,8 +105,9 @@ Consequently a stranger who reaches the sign-up form can create a **user record 
 workspace** — noise, and a verification email — but cannot reach any CRM data. That is a
 materially smaller exposure than "signup is open" implies.
 
-The real password toggle is `AUTH_PASSWORD_ENABLED` (default `true`), which does exist and
-is now `false` — Google is the only provider.
+The real password toggle is `AUTH_PASSWORD_ENABLED` (default `true`), which does exist.
+It was briefly set to `false` and then deliberately restored to `true` — see "Auth
+providers" below.
 
 ### Why no approved access domain was added
 
@@ -147,18 +148,21 @@ Twenty invitations carry **no** email-domain restriction — verified in
 `workspace-invitation.service.ts`, which never consults approved access domains. Any
 address can be invited and will become a full workspace member.
 
-Such a collaborator can use the CRM, but reaching the Plan B portal additionally requires
-their address in `PORTAL_EMAIL_ALLOWLIST`, **and** the Google consent screen switched from
-`Internal` to `External` — otherwise Google refuses them before the portal's own gate is
-consulted.
+Such a collaborator can use the CRM with a password. Reaching the Plan B portal requires
+their address in `PORTAL_EMAIL_ALLOWLIST` and uses **magic-link sign-in** (Plan B Task 5b),
+not Google — the Internal consent screen would refuse them before the portal's own gate is
+consulted, and switching to `External` would only help collaborators whose address happens
+to be a Google account. The consent screen stays `Internal`.
 
 ### Recovering from a lockout
 
-Google is now the only provider. If the OAuth client breaks — secret rotated, consent
-screen changed, project deleted — nobody can sign in. Recovery is to set
-`AUTH_PASSWORD_ENABLED=true` on `twenty-server` in Railway and redeploy, which restores
-the password login. Railway access is therefore the break-glass path and should not
-depend on the CRM.
+Password auth is enabled, so a broken Google OAuth client — secret rotated, consent screen
+changed, project deleted — does **not** lock anyone out: sign in with email and password
+instead.
+
+If password auth is ever turned off again, that safety net goes with it. Recovery would
+then be to set `AUTH_PASSWORD_ENABLED=true` on `twenty-server` in Railway and redeploy.
+Railway access is therefore the break-glass path and must not itself depend on the CRM.
 
 ### Ordering trap when locking down
 
@@ -314,6 +318,8 @@ data in place makes those numbers 223 and 257, so the gate would fail — or wor
 - [x] First API key revoked (old key returns 403) and replaced
 - [x] **No approved access domain added — deliberate, see below**
 - [x] Password auth re-enabled as break-glass and for outside-domain invitees
-- [ ] `workspaceDiscoverability` confirmed not `PUBLIC`
-- [ ] Non-member rejection tested with a personal Gmail account
+- [x] Non-member rejection **tested and passing** — a personal Gmail was blocked at Google
+- [x] `workspaceDiscoverability` — not a live control here: with no approved access domain
+      configured, `PUBLIC` grants nothing, so no setting was required. Revisit only if an
+      approved domain is ever added.
 - [ ] Seth invited and owner mapping filled in
