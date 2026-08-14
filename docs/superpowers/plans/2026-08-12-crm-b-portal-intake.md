@@ -17,7 +17,8 @@
 - Google Workspace domain is **`fraterailabs.com`**; CRM host is **`crm.fraterailabs.com`**.
 - **`TWENTY_API_KEY` must never reach the browser.** Server-only modules; no `NEXT_PUBLIC_` prefix.
 - The portal must be **undiscoverable**: no nav or footer link, `noindex`, and a `robots.txt` disallow.
-- Two gates are both required for access: Google `hd` claim equals the domain **and** active Twenty workspace membership.
+- Access requires active Twenty workspace membership **always**, plus EITHER a Google `hd` claim matching the domain OR an exact match in `PORTAL_EMAIL_ALLOWLIST`. The allowlist is an exception to the domain check only — never to the membership check.
+- **The allowlist is inert while the Google consent screen is `Internal`.** Internal blocks non-Workspace accounts at Google, before our code runs, so an allowlisted outside address cannot authenticate at all. It becomes live only if the consent screen is switched to `External`. Build it, but do not treat it as working access for outside collaborators until that switch is made.
 - Inbound writes go to **Twenty first**; the HubSpot mirror is best-effort and must never fail the request.
 - This Next.js version has breaking changes — **read `node_modules/next/dist/docs/` before writing framework code** (per `AGENTS.md`).
 - Branch: `feat/twenty-crm-portal`.
@@ -132,6 +133,7 @@ GOOGLE_CLIENT_ID=
 GOOGLE_CLIENT_SECRET=
 GOOGLE_REDIRECT_URI=https://www.fraterailabs.com/api/auth/google/callback
 ALLOWED_GOOGLE_DOMAIN=fraterailabs.com
+PORTAL_EMAIL_ALLOWLIST=
 SESSION_SECRET=
 TWENTY_WEBHOOK_SECRET=
 HUBSPOT_PORTAL_ID=245673738
@@ -676,6 +678,44 @@ describe('evaluateAccess', () => {
   it('denies when the email domain and hd claim disagree', () => {
     expect(evaluateAccess({ ...identity, email: 'a@gmail.com' }, member).allowed).toBe(false);
   });
+
+  it('allows an allowlisted outside address that is also a workspace member', () => {
+    process.env.PORTAL_EMAIL_ALLOWLIST = 'contractor@partner.test';
+    const outside = {
+      ...identity, email: 'contractor@partner.test', hostedDomain: undefined,
+    };
+    expect(evaluateAccess(outside, member).allowed).toBe(true);
+  });
+
+  it('still denies an allowlisted address that is NOT a workspace member', () => {
+    process.env.PORTAL_EMAIL_ALLOWLIST = 'contractor@partner.test';
+    const outside = {
+      ...identity, email: 'contractor@partner.test', hostedDomain: undefined,
+    };
+    expect(evaluateAccess(outside, null).allowed).toBe(false);
+  });
+
+  it('matches the allowlist case-insensitively', () => {
+    process.env.PORTAL_EMAIL_ALLOWLIST = 'Contractor@Partner.test';
+    const outside = {
+      ...identity, email: 'contractor@partner.test', hostedDomain: undefined,
+    };
+    expect(evaluateAccess(outside, member).allowed).toBe(true);
+  });
+
+  it('does not treat an allowlist entry as a domain suffix', () => {
+    process.env.PORTAL_EMAIL_ALLOWLIST = 'contractor@partner.test';
+    const other = {
+      ...identity, email: 'someone-else@partner.test', hostedDomain: undefined,
+    };
+    expect(evaluateAccess(other, member).allowed).toBe(false);
+  });
+
+  it('denies everyone outside the domain when the allowlist is empty', () => {
+    process.env.PORTAL_EMAIL_ALLOWLIST = '';
+    const outside = { ...identity, email: 'x@gmail.com', hostedDomain: undefined };
+    expect(evaluateAccess(outside, member).allowed).toBe(false);
+  });
 });
 ```
 
@@ -688,7 +728,7 @@ Expected: FAIL — module not found.
 
 ```ts
 import 'server-only';
-import { requireEnv } from './env';
+import { optionalEnv, requireEnv } from './env';
 import type { GoogleIdentity } from './google-oauth';
 import type { WorkspaceMember } from './membership';
 
@@ -696,26 +736,42 @@ export type AccessDecision =
   | { allowed: true; member: WorkspaceMember }
   | { allowed: false; reason: string };
 
+const parseAllowlist = (): string[] =>
+  (optionalEnv('PORTAL_EMAIL_ALLOWLIST') ?? '')
+    .split(',')
+    .map((entry) => entry.trim().toLowerCase())
+    .filter(Boolean);
+
 export const evaluateAccess = (
   identity: GoogleIdentity,
   member: WorkspaceMember | null,
 ): AccessDecision => {
   const domain = requireEnv('ALLOWED_GOOGLE_DOMAIN').toLowerCase();
+  const email = identity.email.toLowerCase();
 
   if (!identity.emailVerified) return { allowed: false, reason: 'Email is not verified' };
-  if (identity.hostedDomain?.toLowerCase() !== domain) {
-    return { allowed: false, reason: 'Account is not on the Frater AI Labs domain' };
+
+  const isDomainMember =
+    identity.hostedDomain?.toLowerCase() === domain &&
+    email.split('@')[1] === domain;
+
+  const isAllowlisted = parseAllowlist().includes(email);
+
+  if (!isDomainMember && !isAllowlisted) {
+    return { allowed: false, reason: 'Not on the Frater AI Labs domain and not allowlisted' };
   }
-  if (identity.email.split('@')[1]?.toLowerCase() !== domain) {
-    return { allowed: false, reason: 'Email domain does not match the hosted domain' };
-  }
+
+  // Membership is required on BOTH paths. The allowlist waives the domain
+  // requirement, never the membership requirement.
   if (!member) return { allowed: false, reason: 'Not an active Twenty workspace member' };
 
   return { allowed: true, member };
 };
 ```
 
-Both the `hd` claim and the email's own domain are checked. Checking only `hd` would admit an account whose hosted domain is set but whose primary email is elsewhere.
+For the domain path, both the `hd` claim and the email's own domain must match. Checking only `hd` would admit an account whose hosted domain is set but whose primary email is elsewhere.
+
+The allowlist is an exact, case-insensitive, full-address match — never a domain suffix. A suffix rule (`@partner.com`) would silently admit every future address at that domain, which is the failure mode allowlists exist to avoid.
 
 - [ ] **Step 4: Run the tests**
 

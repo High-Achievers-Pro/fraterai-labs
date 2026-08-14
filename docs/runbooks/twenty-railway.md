@@ -124,6 +124,34 @@ Add an approved domain only if you later want new `@fraterailabs.com` staff to o
 themselves without being invited, and understand that you are trading a control for that
 convenience.
 
+### Auth providers: both are live, deliberately
+
+`AUTH_GOOGLE_ENABLED=true` and `AUTH_PASSWORD_ENABLED=true`.
+
+Password auth was re-enabled on purpose, for two reasons. It is the break-glass path if
+the Google OAuth client breaks, and — less obviously — it is the **only** way an invited
+collaborator without an `@fraterailabs.com` address can sign in at all, because the
+Internal consent screen blocks non-Workspace accounts at Google.
+
+| Provider | Admits |
+|---|---|
+| Google | Workspace accounts on `fraterailabs.com` that are workspace members |
+| Password | Any invited member, any email domain |
+
+The owner's original signup password is therefore a live second door into the CRM, not a
+bootstrap leftover. Keep it strong and in the password manager.
+
+### Inviting collaborators outside the domain
+
+Twenty invitations carry **no** email-domain restriction — verified in
+`workspace-invitation.service.ts`, which never consults approved access domains. Any
+address can be invited and will become a full workspace member.
+
+Such a collaborator can use the CRM, but reaching the Plan B portal additionally requires
+their address in `PORTAL_EMAIL_ALLOWLIST`, **and** the Google consent screen switched from
+`Internal` to `External` — otherwise Google refuses them before the portal's own gate is
+consulted.
+
 ### Recovering from a lockout
 
 Google is now the only provider. If the OAuth client breaks — secret rotated, consent
@@ -285,6 +313,7 @@ data in place makes those numbers 223 and 257, so the gate would fail — or wor
 - [x] `AUTH_PASSWORD_ENABLED=false` — Google is the only auth provider
 - [x] First API key revoked (old key returns 403) and replaced
 - [x] **No approved access domain added — deliberate, see below**
+- [x] Password auth re-enabled as break-glass and for outside-domain invitees
 - [ ] `workspaceDiscoverability` confirmed not `PUBLIC`
 - [ ] Non-member rejection tested with a personal Gmail account
 - [ ] Seth invited and owner mapping filled in

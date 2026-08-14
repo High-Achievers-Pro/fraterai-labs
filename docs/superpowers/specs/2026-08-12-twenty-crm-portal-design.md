@@ -273,9 +273,18 @@ Sessions are stateless encrypted cookies.
                  └─ yes → portal
 ```
 
-Two gates, both required: the Google `hd` domain claim proves Frater identity; active
-workspace membership proves current authorization. Revoking someone in Twenty locks them
-out of the portal on their next request.
+Active Twenty workspace membership is **always** required. Beyond that, identity is
+accepted either from the Google `hd` domain claim, or from an exact match in an explicit
+`PORTAL_EMAIL_ALLOWLIST` for named outside collaborators. The allowlist waives the domain
+requirement only — never the membership requirement — so revoking someone in Twenty still
+locks them out of the portal on their next request.
+
+The allowlist exists because Twenty invitations carry no domain restriction, so a
+collaborator on another email domain can legitimately be a workspace member. Note it is
+**inert while the Google consent screen is `Internal`**: Internal blocks non-Workspace
+accounts at Google before our code runs. It becomes effective only if the consent screen
+is switched to `External`, which also means any Google account can reach the consent
+screen and this gate becomes the sole barrier.
 
 Twenty is hardened independently: public signup disabled, invitation-only,
 `approved-access-domain` locked to the Workspace domain, Google OAuth sharing the same
