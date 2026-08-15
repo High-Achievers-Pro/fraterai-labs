@@ -21,6 +21,15 @@
 - **Deploying is `npx twenty plan` then `npx twenty apply`**, from inside `twenty-app/`, against the remote registered as `frater-prod`. There is no `npx twenty apply` and no `app deploy` command. `twenty plan` is a read-only Terraform-style diff and should be run before every apply.
 - **`twenty apply` can OOM the server** (Task 3 finding). After the metadata migration commits, Twenty regenerates GraphQL types for every object, which crashed the container at Node's ~512 MB default heap. `NODE_OPTIONS=--max-old-space-size=1024` is now set on both services. Metadata migrations are transactional and commit *before* type generation, so a crash here leaves no partial schema — but the server does restart, so expect ~90 s of 502s and re-run `twenty plan` afterwards to confirm state. Watch memory as Tasks 4-6 add objects; raise the limit if it recurs.
 - All universal identifiers must be valid **UUID v4** and must never be changed once deployed.
+- **Every entity file must `export default define*({...})` directly.** Assigning to a named
+  const and re-exporting it (`export const x = defineField({...}); export default x;`) makes
+  the CLI drop the entity from the manifest — it does not error. Verified on the live
+  instance: rewriting one working relation field that way turned `twenty plan` from "No
+  changes" into `0 to add, 0 to change, 3 to destroy`, including
+  `fieldMetadata "prospect" — drops the column and its data`. `twenty plan` does surface it
+  loudly and `apply` needs `--force` for destructive changes, so the safety net holds — but
+  only if you read the plan output before applying. **Never apply a plan showing unexpected
+  destroys.**
 - Agents never send outreach. (Enforced in Plan C; the `status` enum here must support it.)
 - Branch: `feat/twenty-crm-portal`.
 
@@ -649,7 +658,7 @@ import {
   PROSPECT_OBJECT_ID, PROSPECT_OUTREACHES_FIELD_ID,
 } from '../constants/universal-identifiers';
 
-export const outreachOnProspect = defineField({
+export default defineField({
   universalIdentifier: OUTREACH_PROSPECT_FIELD_ID,
   objectUniversalIdentifier: OUTREACH_OBJECT_ID,
   type: FieldType.RELATION,
@@ -664,8 +673,6 @@ export const outreachOnProspect = defineField({
     joinColumnName: 'prospectId',
   },
 });
-
-export default outreachOnProspect;
 ```
 
 Create the reverse in the same directory as `prospect-outreaches.field.ts`, with `universalIdentifier: PROSPECT_OUTREACHES_FIELD_ID`, `objectUniversalIdentifier: PROSPECT_OBJECT_ID`, `name: 'outreaches'`, `label: 'Outreaches'`, target object `OUTREACH_OBJECT_ID`, target field `OUTREACH_PROSPECT_FIELD_ID`, and `universalSettings: { relationType: RelationType.ONE_TO_MANY }`.
