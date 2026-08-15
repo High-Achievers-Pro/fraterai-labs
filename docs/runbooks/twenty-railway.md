@@ -290,6 +290,74 @@ Credentials are stored locally, gitignored, at `.env.google-id.local` and
 `AUTH_GOOGLE_CALLBACK_URL` on the server must match a registered redirect URI
 character-for-character, or sign-in fails with `redirect_uri_mismatch`.
 
+## Staging environment
+
+Railway environment **`staging`** (`8ed9e966-c6bd-4e9c-b2f7-da1692420499`) in the same
+project, forked from production.
+
+- URL: `https://twenty-server-staging-361b.up.railway.app` (no custom domain — deliberate;
+  a staging hostname in public certificate-transparency logs is free reconnaissance)
+- `AUTH_GOOGLE_ENABLED=false` — password auth only, so staging needs no OAuth redirect URI
+  and cannot be reached with production Google credentials
+
+**Isolation was verified, not assumed** — a staging that quietly shares production's
+database is worse than no staging at all:
+
+| Resource | Check |
+|---|---|
+| Postgres | `PG_DATABASE_URL` hashes differ between environments |
+| Redis | `REDIS_URL` hashes differ |
+| Bucket | `frater-crm-storage-tpvosc` (prod) vs `frater-crm-storage-nmgxe7` (staging) |
+| `APP_SECRET` | freshly generated, differs from production, identical across staging's own server and worker |
+| `ENCRYPTION_KEY` | same |
+
+Fresh secrets matter beyond tidiness: reusing production's `ENCRYPTION_KEY` would mean a
+staging compromise could decrypt production credentials.
+
+Isolation works because Task 1 wired the database and bucket as Railway *variable
+references* (`${{Postgres.DATABASE_URL}}`) rather than literal values — forking an
+environment re-resolves them against that environment's own services. Hardcoded values
+would have silently pointed staging at production.
+
+### Remaining step: create the staging admin account
+
+`twenty apply` needs an API key, and an API key needs an account. Twenty's auth mutations
+are not served on `/graphql` (the record API), so this cannot be scripted from here.
+
+1. Open the staging URL, sign up with any address and a strong password (this workspace is
+   throwaway; it is not domain-locked)
+2. Settings → APIs → create a key named `frater-staging`
+3. Store it: `pbpaste | tr -d '\n\r \t' > .env.twenty-staging.local && chmod 600 .env.twenty-staging.local`
+4. Register the remote and deploy the schema:
+
+```bash
+cd twenty-app
+npx twenty remote:add --as frater-staging \
+  --url https://twenty-server-staging-361b.up.railway.app \
+  --api-key "$(cat ../.env.twenty-staging.local)"
+npx twenty plan  --remote frater-staging     # expect the full create plan
+npx twenty apply --remote frater-staging
+```
+
+Then seed it by pointing the importer at staging:
+
+```bash
+TWENTY_BASE_URL=https://twenty-server-staging-361b.up.railway.app \
+TWENTY_API_KEY="$(cat .env.twenty-staging.local)" \
+  npx tsx scripts/import-prospects/import.ts --apply
+```
+
+Staging carries the default 100 req/min rate limit, so a full 252-row seed takes 25+
+minutes on backoff. Raise `API_RATE_LIMITING_LONG_LIMIT` on the staging server for the
+seed if you want it fast — and unlike production, there is no urgency to put it back.
+
+### What staging is for
+
+Rehearse anything that touches schema or spends money **here first**: Twenty version
+upgrades, `twenty apply` of new objects or fields, and — most importantly — Plan C's
+enrichment agents, which cost roughly \$85 per full pass over 252 prospects and write to
+real records.
+
 ## Owner mapping
 
 The prospect sheet's `Owner` column contains `Seth` on all 252 rows. Task 6 defines a
@@ -377,8 +445,8 @@ data in place makes those numbers 223 and 257, so the gate would fail — or wor
       pipeline — 252 prospects, 218 companies, 756 outreach drafts. Managed-Postgres backup
       retention depends on the Railway plan and has not been verified for this account.
       Take a manual dump before any Twenty version upgrade regardless.
-- [ ] Task 14: staging environment — worth having before Plan C's agents run against real
-      records and real API spend
+- [~] Task 14: staging environment — **infrastructure done and isolation verified**; needs
+      an admin account created in the browser before the app package can be deployed to it
 - [x] Tasks 3-7 complete: `twenty-app` deployed — Prospect and Outreach objects, 16 custom
       fields on Company and Person, three two-sided relations incl. owner, and the Pipeline
       kanban view with sidebar navigation. `npx twenty plan` reports no drift.
@@ -418,7 +486,75 @@ another operation can push you into throttling.
       importer's `--suppress` dry run reporting `50 entries, 0 matched, 0 marked`). The
       list exists to keep that true as enrichment adds companies; re-run
       `--suppress --apply` after any run that adds them.
-- [ ] Task 14: staging environment
+- [~] Task 14: staging — infrastructure up, awaiting an admin account (see Staging below)
+
+## Staging environment
+
+Railway environment **`staging`** (`8ed9e966-c6bd-4e9c-b2f7-da1692420499`) in the same
+project, forked from production.
+
+- URL: `https://twenty-server-staging-361b.up.railway.app` (no custom domain — deliberate;
+  a staging hostname in public certificate-transparency logs is free reconnaissance)
+- `AUTH_GOOGLE_ENABLED=false` — password auth only, so staging needs no OAuth redirect URI
+  and cannot be reached with production Google credentials
+
+**Isolation was verified, not assumed** — a staging that quietly shares production's
+database is worse than no staging at all:
+
+| Resource | Check |
+|---|---|
+| Postgres | `PG_DATABASE_URL` hashes differ between environments |
+| Redis | `REDIS_URL` hashes differ |
+| Bucket | `frater-crm-storage-tpvosc` (prod) vs `frater-crm-storage-nmgxe7` (staging) |
+| `APP_SECRET` | freshly generated, differs from production, identical across staging's own server and worker |
+| `ENCRYPTION_KEY` | same |
+
+Fresh secrets matter beyond tidiness: reusing production's `ENCRYPTION_KEY` would mean a
+staging compromise could decrypt production credentials.
+
+Isolation works because Task 1 wired the database and bucket as Railway *variable
+references* (`${{Postgres.DATABASE_URL}}`) rather than literal values — forking an
+environment re-resolves them against that environment's own services. Hardcoded values
+would have silently pointed staging at production.
+
+### Remaining step: create the staging admin account
+
+`twenty apply` needs an API key, and an API key needs an account. Twenty's auth mutations
+are not served on `/graphql` (the record API), so this cannot be scripted from here.
+
+1. Open the staging URL, sign up with any address and a strong password (this workspace is
+   throwaway; it is not domain-locked)
+2. Settings → APIs → create a key named `frater-staging`
+3. Store it: `pbpaste | tr -d '\n\r \t' > .env.twenty-staging.local && chmod 600 .env.twenty-staging.local`
+4. Register the remote and deploy the schema:
+
+```bash
+cd twenty-app
+npx twenty remote:add --as frater-staging \
+  --url https://twenty-server-staging-361b.up.railway.app \
+  --api-key "$(cat ../.env.twenty-staging.local)"
+npx twenty plan  --remote frater-staging     # expect the full create plan
+npx twenty apply --remote frater-staging
+```
+
+Then seed it by pointing the importer at staging:
+
+```bash
+TWENTY_BASE_URL=https://twenty-server-staging-361b.up.railway.app \
+TWENTY_API_KEY="$(cat .env.twenty-staging.local)" \
+  npx tsx scripts/import-prospects/import.ts --apply
+```
+
+Staging carries the default 100 req/min rate limit, so a full 252-row seed takes 25+
+minutes on backoff. Raise `API_RATE_LIMITING_LONG_LIMIT` on the staging server for the
+seed if you want it fast — and unlike production, there is no urgency to put it back.
+
+### What staging is for
+
+Rehearse anything that touches schema or spends money **here first**: Twenty version
+upgrades, `twenty apply` of new objects or fields, and — most importantly — Plan C's
+enrichment agents, which cost roughly \$85 per full pass over 252 prospects and write to
+real records.
 
 ## Owner mapping
 
