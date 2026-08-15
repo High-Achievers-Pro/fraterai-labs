@@ -367,7 +367,39 @@ data in place makes those numbers 223 and 257, so the gate would fail — or wor
 - [x] Contract check passed: a payload built by the real importer from row EV-001 was
       accepted by all four objects (201 each) and cleaned up — the deployed schema and the
       already-merged importer agree.
-- [ ] Task 13: delete the 16 seed records, then run the 252-row import
+- [x] **Task 13 complete — the spreadsheet is retired.** 16 seed records deleted; 252
+      prospects, 218 companies, 252 people and 756 outreach drafts imported and verified
+      against the live API with pagination. A second full run created 0 and updated all
+      1,478, proving idempotency against production.
+
+### Rate limiting is the thing that will bite you here
+
+Twenty limits the REST API to **100 requests per 60s** (`API_RATE_LIMITING_LONG_LIMIT` /
+`API_RATE_LIMITING_LONG_TTL_IN_MS`, plus a 100-per-1s short bucket). A full import issues
+roughly ten requests per row — about 2,500 — so at the default it takes 25+ minutes and
+spends most of that in backoff. The first live attempt failed after 8 rows before retry
+handling existed.
+
+For a bulk load, raise it temporarily and **put it back afterwards**:
+
+```bash
+railway variables -p <project> -e production -s twenty-server --set "API_RATE_LIMITING_LONG_LIMIT=5000"
+railway redeploy  -p <project> -e production -s twenty-server -y
+# … run the import (took 4m49s at this limit) …
+railway variable delete -p <project> -e production -s twenty-server API_RATE_LIMITING_LONG_LIMIT
+railway redeploy -p <project> -e production -s twenty-server -y
+```
+
+The importer retries 429s with adaptive backoff, so it completes either way — the raised
+limit only makes it fast. Note that ordinary verification queries (a paginated count over
+218 companies is ~5 requests) also consume the quota, so a count immediately followed by
+another operation can push you into throttling.
+
+- [x] Suppression list applied — **verified no-op**: 0 of the 50 suppression entries match
+      any of the 218 imported companies (confirmed by local set comparison and by the
+      importer's `--suppress` dry run reporting `50 entries, 0 matched, 0 marked`). The
+      list exists to keep that true as enrichment adds companies; re-run
+      `--suppress --apply` after any run that adds them.
 - [ ] Task 14: staging environment
 
 ## Owner mapping
