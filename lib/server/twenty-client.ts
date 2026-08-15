@@ -41,9 +41,12 @@ export const twentyGraphQL = async <T>(
 };
 
 export const twentyRest = async <T>(path: string, init: RequestInit = {}): Promise<T> => {
+  const headers = new Headers(authHeaders());
+  new Headers(init.headers).forEach((value, key) => headers.set(key, value));
+
   const response = await fetch(`${baseUrl()}/rest${path}`, {
     ...init,
-    headers: { ...authHeaders(), ...init.headers },
+    headers,
     cache: 'no-store',
   });
 
