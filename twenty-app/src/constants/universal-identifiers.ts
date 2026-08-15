@@ -60,3 +60,27 @@ export const PERSON_RESEARCH_LINKS_FIELD_ID = '39dbcdc8-4686-4a5c-ba54-9d6785eca
 // Prospect owner — relation to the standard workspaceMember object
 export const PROSPECT_OWNER_FIELD_ID = 'ef255fb2-c22f-4862-995d-74197a6029eb';
 export const WORKSPACE_MEMBER_PROSPECTS_FIELD_ID = 'dac63d09-2f31-4747-82fa-76dd3812906b';
+
+// Task 7 — Prospect Pipeline view, its view fields, its kanban groups, and
+// the navigation menu item that surfaces it in the sidebar.
+export const PROSPECT_PIPELINE_VIEW_ID = 'fa5de1f6-fca3-4554-952d-f3d8ae5133af';
+
+export const PROSPECT_PIPELINE_VIEW_FIELD_QUEUE_ID_ID = '02be2d27-7763-4715-bc1c-96b724fc008f';
+export const PROSPECT_PIPELINE_VIEW_FIELD_COMPANY_ID = 'b8794947-89a8-4413-b6d9-44743dff5e79';
+export const PROSPECT_PIPELINE_VIEW_FIELD_PERSON_ID = 'e4112e81-f5e2-42bf-9c3a-5eceb2acda6d';
+export const PROSPECT_PIPELINE_VIEW_FIELD_STAGE_ID = 'ef6b8062-cebc-49e4-8703-5c4144c2d983';
+export const PROSPECT_PIPELINE_VIEW_FIELD_LEAD_SOURCE_ID = '0d1caf7f-d5e2-44ab-abcd-34e9ba4fce44';
+export const PROSPECT_PIPELINE_VIEW_FIELD_OWNER_ID = 'fba3eabe-e704-45d2-af33-e4074d5f77d3';
+export const PROSPECT_PIPELINE_VIEW_FIELD_RECOMMENDED_AI_WORKFLOW_ID = 'f9675fa7-903c-4061-978f-150db55e7176';
+
+export const PROSPECT_PIPELINE_GROUP_SOURCED_ID = 'cb9d179c-525a-4686-8b63-a75540f2e8f2';
+export const PROSPECT_PIPELINE_GROUP_EVIDENCE_VERIFIED_ID = '81d8d2b3-5358-45bc-b154-4a6932e58c55';
+export const PROSPECT_PIPELINE_GROUP_ICP_QUALIFIED_ID = 'e03d8696-d4fe-42c9-afc5-ed922fce6d49';
+export const PROSPECT_PIPELINE_GROUP_ENRICHED_ID = '47f8d2e2-eef0-4771-aedc-5b6fba10eba0';
+export const PROSPECT_PIPELINE_GROUP_OUTREACH_DRAFTED_ID = 'd57b218d-5c6d-477e-9ba1-97b8b31d042f';
+export const PROSPECT_PIPELINE_GROUP_CONTACTED_ID = '2cfa1d8b-64f4-4af0-9e5e-e386a24eb9d9';
+export const PROSPECT_PIPELINE_GROUP_ENGAGED_ID = '98278da1-ce74-4da2-9bec-5219732df58c';
+export const PROSPECT_PIPELINE_GROUP_CONVERTED_ID = '12c1a5a0-29fd-404f-a42b-cf96ac5c3a28';
+export const PROSPECT_PIPELINE_GROUP_DISQUALIFIED_ID = 'b76bf7da-6c2c-4513-bbd0-9818a1a835d2';
+
+export const PROSPECTS_NAVIGATION_MENU_ITEM_ID = 'b5e525d1-eb34-41d0-af6e-dd76b12b7100';
