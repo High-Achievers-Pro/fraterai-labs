@@ -69,10 +69,20 @@ They were generated with `openssl rand -base64 32` and written straight into Rai
 `railway variables --set-from-stdin`, so the values never appear in a shell history or a
 transcript.
 
-**Copy both from the Railway dashboard into the team password manager.** Railway is
-currently the only place they exist. Losing `ENCRYPTION_KEY` makes every stored
-credential — connected mailboxes, app API keys — permanently unrecoverable; no
-restore of the Postgres backup will bring them back.
+Both are saved in the team password manager as of 2026-08-15, so Railway is no longer the
+only copy. Keep it that way: losing `ENCRYPTION_KEY` makes every stored credential —
+connected mailboxes, app API keys — permanently unrecoverable, and no restore of the
+Postgres backup brings them back.
+
+To read a value out again without putting it on screen or in shell history:
+
+```bash
+railway variables -p 940081c5-8c75-4649-8a4e-a12681284637 -e production -s twenty-server --kv \
+  | grep '^ENCRYPTION_KEY=' | cut -d= -f2- | tr -d '\n' | pbcopy
+printf '' | pbcopy   # clear the clipboard afterwards
+```
+
+Never run `railway variables --kv` unfiltered where the output is captured or logged.
 
 To rotate `ENCRYPTION_KEY` later, set the current value as `FALLBACK_ENCRYPTION_KEY`
 first so existing ciphertext stays readable during the transition.
@@ -358,7 +368,9 @@ data in place makes those numbers 223 and 257, so the gate would fail — or wor
 
 **Outstanding**
 
-- [ ] Copy `APP_SECRET` and `ENCRYPTION_KEY` from Railway into the team password manager — Railway is currently the only place they exist
+- [x] `APP_SECRET` and `ENCRYPTION_KEY` copied into the team password manager (2026-08-15).
+      Verified before copying that both services hold identical values (compared SHA-256
+      prefixes, not the values). Railway is no longer the only copy.
 - [ ] Delete the 16 seed/demo records before the import (5 companies, 5 people, 6 opportunities), or Task 13's 218/252 gate will read 223/257
 - [ ] Confirm Railway's backup policy for this account before the CRM holds real pipeline data
 - [x] Tasks 3-7 complete: `twenty-app` deployed — Prospect and Outreach objects, 16 custom
