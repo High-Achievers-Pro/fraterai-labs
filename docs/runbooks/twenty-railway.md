@@ -198,6 +198,39 @@ railway variables -p 940081c5-8c75-4649-8a4e-a12681284637 -e production -s twent
 Never run `railway variables --kv` unfiltered where the output is captured — it prints
 secrets in plain text.
 
+### `twenty apply` can OOM the server
+
+Applying an app manifest triggers GraphQL type regeneration across every object once the
+metadata migration commits. On the default Node heap this crashed the container:
+
+```
+FATAL ERROR: Reached heap limit Allocation failed - JavaScript heap out of memory
+```
+
+`NODE_OPTIONS=--max-old-space-size=1024` is now set on both services. Container RSS sits
+around 0.72 GB, so there is headroom, but every object added to the app makes type
+generation heavier — watch memory when applying and raise the limit if it recurs.
+
+**A crash here does not corrupt the schema.** The metadata migration is transactional and
+commits *before* type generation runs, so the manifest is applied even if the process then
+dies. After any crash during apply, wait ~90 s for the restart and run `npx twenty plan` —
+"No changes" means the apply landed.
+
+### App deployment
+
+The `twenty` CLI is registered against this server as remote **`frater-prod`**
+(`npx twenty remote:list`). Credentials live in `~/.twenty/config.json`, which the CLI
+creates world-readable — it has been chmod'ed to 600, and should be re-checked after any
+`remote:add`.
+
+```bash
+cd twenty-app
+npx twenty plan     # read-only diff, Terraform-style
+npx twenty apply    # applies after showing the same plan
+```
+
+There is no `yarn deploy` or `twenty app deploy`; those appear in older docs.
+
 ### Startup ordering
 
 The worker boots faster than the server finishes migrating, so on a cold start it logs

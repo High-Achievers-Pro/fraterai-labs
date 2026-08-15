@@ -17,7 +17,9 @@
 - Import from the **`All Evidence Leads`** sheet only (252 rows). Never import `CMU Startup Additions` (subset) or `Alumni Lead View` (view).
 - All 252 `Company LinkedIn / Lookup`, `Alumni Evidence Search`, and `Target Person Search` values are Google **search** URLs. They go to `researchLinks`. **Never** write them to `linkedinLink`.
 - The importer is **dry-run by default** and **idempotent on `Queue ID`**.
-- `twenty-app/` requires **Node 24 + Yarn 4**; the rest of the repo uses npm. Keep separate lockfiles.
+- `twenty-app/` uses **npm**, not Yarn 4 (Task 3 finding). Twenty's example apps use Yarn only because they sit inside Twenty's yarn monorepo; nesting Yarn 4 inside this npm repo made it claim the repo root and write `packageManager` into the Next.js app's `package.json`. `nodeLinker: node-modules` and a CLI that never shells out to yarn mean the convention has no technical force here.
+- **Deploying is `npx twenty plan` then `npx twenty apply`**, from inside `twenty-app/`, against the remote registered as `frater-prod`. There is no `npx twenty apply` and no `app deploy` command. `twenty plan` is a read-only Terraform-style diff and should be run before every apply.
+- **`twenty apply` can OOM the server** (Task 3 finding). After the metadata migration commits, Twenty regenerates GraphQL types for every object, which crashed the container at Node's ~512 MB default heap. `NODE_OPTIONS=--max-old-space-size=1024` is now set on both services. Metadata migrations are transactional and commit *before* type generation, so a crash here leaves no partial schema — but the server does restart, so expect ~90 s of 502s and re-run `twenty plan` afterwards to confirm state. Watch memory as Tasks 4-6 add objects; raise the limit if it recurs.
 - All universal identifiers must be valid **UUID v4** and must never be changed once deployed.
 - Agents never send outreach. (Enforced in Plan C; the `status` enum here must support it.)
 - Branch: `feat/twenty-crm-portal`.
@@ -232,7 +234,12 @@ git commit -m "docs: record workspace hardening and owner mapping"
 
 ---
 
-### Task 3: Scaffold the frater-crm app package
+### Task 3: Scaffold the frater-crm app package — ✅ DONE (commit 8a201be)
+
+Implemented with the deviations recorded in Global Constraints: npm instead of Yarn 4,
+`engines.node >= 24.5.0`, and `defineApplicationRole()` instead of the deprecated
+`defineRole()` + `defaultRoleUniversalIdentifier`. The remote `frater-prod` is registered
+and `twenty plan` reports no drift.
 
 **Files:**
 - Create: `twenty-app/package.json`, `twenty-app/tsconfig.json`, `twenty-app/.nvmrc`, `twenty-app/src/application.config.ts`, `twenty-app/src/constants/universal-identifiers.ts`, `twenty-app/src/roles/default-function.role.ts`
@@ -246,6 +253,8 @@ git commit -m "docs: record workspace hardening and owner mapping"
 Every identifier is fixed forever once deployed, so generate them all now.
 
 Run: `for i in $(seq 1 42); do uuidgen | tr 'A-Z' 'a-z'; done`
+
+Additional option UUIDs are needed by Tasks 4-6 for SELECT choices; generate those in their own tasks.
 
 - [ ] **Step 2: Create the package manifest**
 
@@ -379,7 +388,7 @@ twenty-app/.twenty
 
 - [ ] **Step 6: Typecheck**
 
-Run: `cd twenty-app && yarn install && yarn typecheck`
+Run: `cd twenty-app && npm install && npm run typecheck`
 Expected: no errors.
 
 If `defineRole` rejects a property, run `yarn twenty dev typecheck` and follow the reported shape — the SDK version you pinned is authoritative over this plan.
@@ -523,12 +532,12 @@ Generate the twelve option UUIDs (`<uuid-s1>`…`<uuid-l3>`) with `uuidgen` and 
 
 - [ ] **Step 2: Typecheck**
 
-Run: `cd twenty-app && yarn typecheck`
+Run: `cd twenty-app && npm run typecheck`
 Expected: no errors.
 
 - [ ] **Step 3: Deploy and verify**
 
-Run: `cd twenty-app && yarn deploy`
+Run: `cd twenty-app && npx twenty plan` — review the diff — then `npx twenty apply`
 
 Then in Twenty, open Prospects and create one record by hand. Confirm the stage picker lists all nine stages in order and defaults to Sourced.
 
@@ -665,7 +674,7 @@ Create the reverse in the same directory as `prospect-outreaches.field.ts`, with
 
 - [ ] **Step 3: Typecheck and deploy**
 
-Run: `cd twenty-app && yarn typecheck && yarn deploy`
+Run: `cd twenty-app && npm run typecheck && npx twenty plan` — review the diff — then `npx twenty apply`
 Expected: no errors; Outreaches appears in Twenty.
 
 - [ ] **Step 4: Verify the relation both ways**
@@ -837,7 +846,7 @@ Create the reverse as `workspace-member-prospects.field.ts`: `universalIdentifie
 
 - [ ] **Step 7: Typecheck, deploy, verify**
 
-Run: `cd twenty-app && yarn typecheck && yarn deploy`
+Run: `cd twenty-app && npm run typecheck && npx twenty plan` — review the diff — then `npx twenty apply`
 
 In Twenty, open a Company record and confirm Segment, Region, Country, Headcount status, Research links, Suppressed, and Prospects all appear. Do the same on a Person record. Then open a Prospect and confirm Owner renders as a workspace-member picker listing the members invited in Task 2 — not a free-text box.
 
@@ -876,7 +885,7 @@ A view without a navigation item is invisible in the sidebar — the pitfall cal
 
 - [ ] **Step 4: Deploy and verify**
 
-Run: `cd twenty-app && yarn typecheck && yarn deploy`
+Run: `cd twenty-app && npm run typecheck && npx twenty plan` — review the diff — then `npx twenty apply`
 Expected: Prospects appears in the sidebar and opens on the Pipeline view.
 
 - [ ] **Step 5: Commit**
@@ -2100,7 +2109,9 @@ Add `crm-staging.fraterailabs.com` and register its callback URI on the Google O
 - [ ] **Step 4: Deploy the app package to staging**
 
 ```bash
-cd twenty-app && TWENTY_BASE_URL=https://crm-staging.fraterailabs.com yarn deploy
+cd twenty-app && npx twenty remote:add --as frater-staging --url https://crm-staging.fraterailabs.com --api-key "$(cat ../.env.twenty-staging.local)"
+npx twenty plan --remote frater-staging
+npx twenty apply --remote frater-staging
 ```
 
 Confirm Prospects and Outreaches appear.
