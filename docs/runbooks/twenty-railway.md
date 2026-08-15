@@ -361,7 +361,14 @@ data in place makes those numbers 223 and 257, so the gate would fail — or wor
 - [ ] Copy `APP_SECRET` and `ENCRYPTION_KEY` from Railway into the team password manager — Railway is currently the only place they exist
 - [ ] Delete the 16 seed/demo records before the import (5 companies, 5 people, 6 opportunities), or Task 13's 218/252 gate will read 223/257
 - [ ] Confirm Railway's backup policy for this account before the CRM holds real pipeline data
-- [ ] Tasks 3-7: deploy the `twenty-app` package (objects, fields, views) — now unblocked
+- [x] Tasks 3-7 complete: `twenty-app` deployed — Prospect and Outreach objects, 16 custom
+      fields on Company and Person, three two-sided relations incl. owner, and the Pipeline
+      kanban view with sidebar navigation. `npx twenty plan` reports no drift.
+- [x] Contract check passed: a payload built by the real importer from row EV-001 was
+      accepted by all four objects (201 each) and cleaned up — the deployed schema and the
+      already-merged importer agree.
+- [ ] Task 13: delete the 16 seed records, then run the 252-row import
+- [ ] Task 14: staging environment
 
 ## Owner mapping
 
