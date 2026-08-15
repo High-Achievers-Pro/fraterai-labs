@@ -22,6 +22,12 @@ export type ApplyResult = {
 
 const emptyCounts = () => ({ companies: 0, people: 0, prospects: 0, outreaches: 0 });
 
+// A 252-row live run issues ~10 requests per row and, under retry/backoff for
+// a rate limit, can run for many minutes. A silent process is indistinguishable
+// from a hung one, so progress prints periodically — often enough to reassure,
+// rare enough not to flood the terminal on a run this size.
+const PROGRESS_INTERVAL = 25;
+
 // Per-run cache so repeated lookups for the same company/person (and, for
 // consistency, prospect/outreach) within a single applyPlan() call never
 // depend on the Twenty REST API being read-your-writes consistent
@@ -163,8 +169,10 @@ export const applyPlan = async (
   }
 
   const cache: UpsertCache = new Map();
+  const startedAt = Date.now();
 
-  for (const entry of plan.entries) {
+  for (let i = 0; i < plan.entries.length; i += 1) {
+    const entry = plan.entries[i];
     try {
       await applyEntry(entry, client, result, cache, options.ownerIdByOwnerText);
     } catch (error) {
@@ -172,6 +180,16 @@ export const applyPlan = async (
         queueId: entry.prospect.queueId,
         error: error instanceof Error ? error.message : String(error),
       });
+    }
+
+    const processed = i + 1;
+    if (processed % PROGRESS_INTERVAL === 0 || processed === plan.entries.length) {
+      const elapsedSec = Math.round((Date.now() - startedAt) / 1000);
+      console.log(
+        `  ...${processed}/${plan.entries.length} prospects processed (${elapsedSec}s elapsed) `
+        + `— created ${result.created.prospects}, updated ${result.updated.prospects}, `
+        + `failed ${result.failures.length}`,
+      );
     }
   }
 
