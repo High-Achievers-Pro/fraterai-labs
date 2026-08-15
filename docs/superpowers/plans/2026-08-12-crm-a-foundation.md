@@ -391,7 +391,7 @@ twenty-app/.twenty
 Run: `cd twenty-app && npm install && npm run typecheck`
 Expected: no errors.
 
-If `defineRole` rejects a property, run `yarn twenty dev typecheck` and follow the reported shape — the SDK version you pinned is authoritative over this plan.
+If the SDK rejects a property, run `npx twenty dev:typecheck` and follow the reported shape — the installed SDK is authoritative over this plan. Read the real types with `node_modules/twenty-sdk/dist/define/index.d.ts`.
 
 - [ ] **Step 7: Commit**
 
