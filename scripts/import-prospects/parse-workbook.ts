@@ -54,7 +54,11 @@ export const readSheet = async (filePath: string, sheetName: string) => {
   const workbook = new ExcelJS.Workbook();
   const raw = await readFile(filePath);
   const normalized = await normalizeWorkbookBuffer(raw);
-  await workbook.xlsx.load(normalized);
+  // exceljs's own type defs declare a bespoke `Buffer extends ArrayBuffer` interface
+  // that collides with @types/node's generic `Buffer<TArrayBuffer>`, so a real Node
+  // Buffer (which satisfies exceljs's shape at runtime) needs a cast to satisfy `tsc`.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- exceljs/@types/node Buffer collision, see above
+  await workbook.xlsx.load(normalized as any);
   const sheet = workbook.getWorksheet(sheetName);
   if (!sheet) throw new Error(`Sheet "${sheetName}" not found in ${filePath}`);
   return sheet;

@@ -29,7 +29,7 @@ export const normalizeWorkbookBuffer = async (buffer: Buffer): Promise<Buffer> =
       .replace(/<x:/g, '<')
       .replace(/<\/x:/g, '</')
       .replace(/xmlns:x=/g, 'xmlns=')
-      .replace(/<tableParts[^>]*>.*?<\/tableParts>/gs, '')
+      .replace(/<tableParts[^>]*>[\s\S]*?<\/tableParts>/g, '')
       .replace(/<tableParts[^>]*\/>/g, '');
     if (normalized !== original) zip.file(entry.name, normalized);
   }
