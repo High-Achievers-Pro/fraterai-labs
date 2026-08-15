@@ -371,8 +371,14 @@ data in place makes those numbers 223 and 257, so the gate would fail — or wor
 - [x] `APP_SECRET` and `ENCRYPTION_KEY` copied into the team password manager (2026-08-15).
       Verified before copying that both services hold identical values (compared SHA-256
       prefixes, not the values). Railway is no longer the only copy.
-- [ ] Delete the 16 seed/demo records before the import (5 companies, 5 people, 6 opportunities), or Task 13's 218/252 gate will read 223/257
-- [ ] Confirm Railway's backup policy for this account before the CRM holds real pipeline data
+- [x] Twenty's 16 seed/demo records deleted before the import (5 companies, 5 people,
+      6 opportunities), so the 218/252 gate measured only real data
+- [ ] **Confirm Railway's backup policy for this account.** The CRM now holds the entire
+      pipeline — 252 prospects, 218 companies, 756 outreach drafts. Managed-Postgres backup
+      retention depends on the Railway plan and has not been verified for this account.
+      Take a manual dump before any Twenty version upgrade regardless.
+- [ ] Task 14: staging environment — worth having before Plan C's agents run against real
+      records and real API spend
 - [x] Tasks 3-7 complete: `twenty-app` deployed — Prospect and Outreach objects, 16 custom
       fields on Company and Person, three two-sided relations incl. owner, and the Pipeline
       kanban view with sidebar navigation. `npx twenty plan` reports no drift.
