@@ -38,6 +38,14 @@ describe('evaluateAccess', () => {
     expect(evaluateAccess({ ...identity, email: 'a@gmail.com' }, member).allowed).toBe(false);
   });
 
+  it('denies an in-domain email with no hd claim', () => {
+    expect(evaluateAccess({ ...identity, hostedDomain: undefined }, member).allowed).toBe(false);
+  });
+
+  it('denies an in-domain email with an empty-string hd claim', () => {
+    expect(evaluateAccess({ ...identity, hostedDomain: '' }, member).allowed).toBe(false);
+  });
+
   it('allows an allowlisted outside address that is also a workspace member', () => {
     process.env.PORTAL_EMAIL_ALLOWLIST = 'contractor@partner.test';
     const outside = {
