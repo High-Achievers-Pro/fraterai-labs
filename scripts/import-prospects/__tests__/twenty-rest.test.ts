@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createTwentyClient } from '../twenty-rest';
+import { createTwentyClient, escapeFilterValue } from '../twenty-rest';
 
 const respondWith = (payload: unknown) => {
   const fetchMock = vi.fn(async (..._args: unknown[]) => new Response(JSON.stringify(payload), {
@@ -241,5 +241,71 @@ describe('twenty-rest retry', () => {
 
     const init = fetchMock.mock.calls[0][1] as RequestInit;
     expect(init.signal).toBeInstanceOf(AbortSignal);
+  });
+});
+
+// A live suppression run crashed on `name[eq]:Harts Plumbers, Electricians &
+// HVAC Technicians` — Twenty's filter grammar auto-wraps even a bare filter
+// in `and(...)` before parsing, so its top-level comma-splitter runs on
+// every filter, not just multi-clause ones, and a literal comma in a value
+// becomes a second, malformed clause. Verified against Twenty's own parser
+// test suite and, read-only, against the live server: a double-quoted comma
+// value parses as one token (200, not 400); an unescaped ampersand against
+// the real, already-imported "TRAX Analytics / Mind & Social" matches
+// exactly. Brackets have no verified-safe encoding, so they're refused.
+describe('escapeFilterValue', () => {
+  it('passes through a value with no delimiter characters unchanged', () => {
+    expect(escapeFilterValue('Acme Co')).toBe('Acme Co');
+  });
+
+  it('passes through an ampersand unchanged — confirmed live against a real record', () => {
+    expect(escapeFilterValue('TRAX Analytics / Mind & Social')).toBe('TRAX Analytics / Mind & Social');
+  });
+
+  it('passes through a lone apostrophe unchanged — this exact value is already live', () => {
+    // "Lowe's Guardian Angel Home Care" imported successfully in the run
+    // that surfaced this bug; the comma-only fix must not regress it.
+    expect(escapeFilterValue("Lowe's Guardian Angel Home Care")).toBe("Lowe's Guardian Angel Home Care");
+  });
+
+  it('wraps a comma-bearing value in double quotes', () => {
+    expect(escapeFilterValue('Harts Plumbers, Electricians & HVAC Technicians'))
+      .toBe('"Harts Plumbers, Electricians & HVAC Technicians"');
+  });
+
+  it('wraps a value with multiple commas', () => {
+    expect(escapeFilterValue('Golden Rule Plumbing, Heating, Cooling & Electrical'))
+      .toBe('"Golden Rule Plumbing, Heating, Cooling & Electrical"');
+  });
+
+  it('throws naming the value when it contains "["', () => {
+    expect(() => escapeFilterValue('Acme [East]')).toThrow(/\[|\]/);
+    expect(() => escapeFilterValue('Acme [East]')).toThrow(/Acme \[East\]/);
+  });
+
+  it('throws naming the value when it contains "]" without "["', () => {
+    expect(() => escapeFilterValue('Acme East]')).toThrow(/Acme East\]/);
+  });
+
+  it('throws when a comma-bearing value also contains a literal double quote', () => {
+    // The offending value is named in the error, but JSON.stringify escapes
+    // its embedded quotes with backslashes, so match on the un-quoted parts.
+    expect(() => escapeFilterValue('Acme "The Best" Co, Inc.'))
+      .toThrow(/Acme.*The Best.*Co, Inc\./);
+  });
+
+  it('does not throw for a double quote alone, with no comma to protect', () => {
+    // Nothing needs escaping if there's no comma — a bare quote character
+    // is inert to Twenty's splitter unless there's a comma at stake.
+    expect(escapeFilterValue('Acme "The Best" Co')).toBe('Acme "The Best" Co');
+  });
+
+  it('the escaped value round-trips through JSON.stringify-quoting rules (sanity check)', () => {
+    // Not a Twenty behavior assertion — just pins that quoting wraps the
+    // value exactly once, not double-escaped or mangled.
+    const escaped = escapeFilterValue('a, b');
+    expect(escaped).toBe('"a, b"');
+    expect(escaped.startsWith('"') && escaped.endsWith('"')).toBe(true);
+    expect(escaped.slice(1, -1)).toBe('a, b');
   });
 });

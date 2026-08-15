@@ -1,4 +1,5 @@
 import type { ImportPlan, PlanEntry } from './types';
+import { escapeFilterValue } from './twenty-rest';
 import type { TwentyClient } from './twenty-rest';
 
 export type ApplyOptions = {
@@ -123,8 +124,13 @@ const applyEntry = async (
   entry: PlanEntry, client: TwentyClient, result: ApplyResult, cache: UpsertCache,
   ownerIdByOwnerText?: Map<string, string | undefined>,
 ) => {
+  // escapeFilterValue throws for a value with no verified-safe encoding
+  // (currently: "[" / "]", or "," combined with '"'). That throw propagates
+  // out of applyEntry to applyPlan's per-row try/catch below, landing this
+  // row in result.failures by queueId rather than crashing the run or,
+  // worse, sending a filter that could silently match the wrong record.
   const companyId = await upsert(
-    client, 'companies', `name[eq]:${entry.company.name}`,
+    client, 'companies', `name[eq]:${escapeFilterValue(entry.company.name)}`,
     entry.company, result, cache,
   );
 
@@ -132,7 +138,8 @@ const applyEntry = async (
   // people who happen to share a name (the real sheet has one name spanning
   // ten companies), linking a prospect to someone else's employee and
   // discarding the later rows' title and evidence.
-  const personFilter = `name.firstName[eq]:${entry.person.name.firstName},name.lastName[eq]:${entry.person.name.lastName},companyId[eq]:${companyId}`;
+  const personFilter = `name.firstName[eq]:${escapeFilterValue(entry.person.name.firstName)},`
+    + `name.lastName[eq]:${escapeFilterValue(entry.person.name.lastName)},companyId[eq]:${companyId}`;
   const personId = await upsert(
     client, 'people', personFilter,
     { ...entry.person, companyId }, result, cache,
@@ -140,13 +147,13 @@ const applyEntry = async (
 
   const ownerId = ownerIdByOwnerText?.get(entry.row.owner.trim());
   const prospectId = await upsert(
-    client, 'prospects', `queueId[eq]:${entry.prospect.queueId}`,
+    client, 'prospects', `queueId[eq]:${escapeFilterValue(entry.prospect.queueId)}`,
     { ...entry.prospect, companyId, personId, ownerId }, result, cache,
   );
 
   for (const outreach of entry.outreaches) {
     await upsert(
-      client, 'outreaches', `title[eq]:${outreach.title}`,
+      client, 'outreaches', `title[eq]:${escapeFilterValue(outreach.title)}`,
       { ...outreach, prospectId }, result, cache,
     );
   }

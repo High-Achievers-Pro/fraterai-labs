@@ -1,4 +1,5 @@
 import { applyPlan } from './apply-plan';
+import { applySuppressions } from './apply-suppressions';
 import { buildPlan } from './build-plan';
 import { parseSuppressionList, parseWorkbook } from './parse-workbook';
 import { resolveOwners } from './resolve-owners';
@@ -25,6 +26,11 @@ const toWorkspaceMember = (record: TwentyRecord): WorkspaceMember => {
 
 const main = async () => {
   const dryRun = !process.argv.includes('--apply');
+  // Opt-in: the base import never touched the suppression list until this
+  // step existed, and that stays the default. Pass --suppress to also run
+  // it. Like the rest of the CLI, writing still requires --apply — without
+  // it, --suppress reports matches without marking anything.
+  const suppress = process.argv.includes('--suppress');
   const client = createTwentyClient();
 
   const rows = await parseWorkbook(WORKBOOK);
@@ -63,18 +69,37 @@ const main = async () => {
   if (dryRun) {
     console.log('\nDRY RUN — nothing written. Would create:');
     console.log(result.wouldCreate);
-    console.log('\nRe-run with --apply to write.');
-    return;
+  } else {
+    console.log('\nCreated:', result.created);
+    console.log('Updated:', result.updated);
+
+    if (result.failures.length > 0) {
+      console.log(`\n${result.failures.length} failures:`);
+      for (const failure of result.failures) console.log(`  - ${failure.queueId}: ${failure.error}`);
+      process.exitCode = 1;
+    }
   }
 
-  console.log('\nCreated:', result.created);
-  console.log('Updated:', result.updated);
+  // First-class, flag-gated step (previously ad hoc — the one time it ran
+  // against the live server it crashed on a comma in a suppression-list
+  // company name; see escapeFilterValue in twenty-rest.ts). Runs after the
+  // main import so it can look up already-imported companies by name.
+  if (suppress) {
+    const suppression = await applySuppressions(plan.suppressedCompanies, client, { dryRun });
+    const label = dryRun ? 'Suppression (dry run — nothing written)' : 'Suppression';
+    console.log(
+      `\n${label}: ${suppression.total} entries, ${suppression.matched} matched, `
+      + `${suppression.marked} marked`,
+    );
 
-  if (result.failures.length > 0) {
-    console.log(`\n${result.failures.length} failures:`);
-    for (const failure of result.failures) console.log(`  - ${failure.queueId}: ${failure.error}`);
-    process.exitCode = 1;
+    if (suppression.failures.length > 0) {
+      console.log(`\n${suppression.failures.length} suppression failure(s):`);
+      for (const failure of suppression.failures) console.log(`  - ${failure.name}: ${failure.error}`);
+      process.exitCode = 1;
+    }
   }
+
+  if (dryRun) console.log('\nRe-run with --apply to write.');
 };
 
 main().catch((error) => {

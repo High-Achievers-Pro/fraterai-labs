@@ -335,4 +335,67 @@ describe('applyPlan', () => {
     expect(result.failures[0].error).toMatch(/no usable record id/);
     expect(client.create).not.toHaveBeenCalledWith('people', expect.anything());
   });
+
+  describe('filter escaping (a live run crashed on a comma in a company name)', () => {
+    it('quotes a comma in the company name filter', async () => {
+      const client = fakeServer();
+      await applyPlan(
+        buildPlan([row({ company: 'Harts Plumbers, Electricians & HVAC Technicians' })], []),
+        client as never, { dryRun: false },
+      );
+      const companyFilters = client.findByFilter.mock.calls
+        .filter((c) => c[0] === 'companies').map((c) => c[1]);
+      expect(companyFilters).toEqual(['name[eq]:"Harts Plumbers, Electricians & HVAC Technicians"']);
+    });
+
+    it('leaves an unescaped ampersand in the company name filter', async () => {
+      const client = fakeServer();
+      await applyPlan(
+        buildPlan([row({ company: 'TRAX Analytics / Mind & Social' })], []),
+        client as never, { dryRun: false },
+      );
+      const companyFilters = client.findByFilter.mock.calls
+        .filter((c) => c[0] === 'companies').map((c) => c[1]);
+      expect(companyFilters).toEqual(['name[eq]:TRAX Analytics / Mind & Social']);
+    });
+
+    it('quotes a comma inside one clause of the (already comma-joined) person name filter', async () => {
+      const client = fakeServer();
+      // splitFullName splits on whitespace only, so 'Ada, Lovelace' becomes
+      // firstName 'Ada,' / lastName 'Lovelace' — the comma stays attached to
+      // the first token. This is exactly the risky case: a comma inside one
+      // clause of a filter that is ALSO joined by real, meaningful commas
+      // (name.firstName[eq]:...,name.lastName[eq]:...,companyId[eq]:...).
+      // If quoting only that clause's value didn't work, the real separator
+      // commas around it would be misread too.
+      await applyPlan(
+        buildPlan([row({ leadPerson: 'Ada, Lovelace' })], []),
+        client as never, { dryRun: false },
+      );
+      const personFilters = client.findByFilter.mock.calls
+        .filter((c) => c[0] === 'people').map((c) => c[1]);
+      expect(personFilters).toEqual([
+        'name.firstName[eq]:"Ada,",name.lastName[eq]:Lovelace,companyId[eq]:companies-1',
+      ]);
+    });
+
+    it('fails only the offending row when a value has no safe filter encoding, isolating the rest of the run', async () => {
+      const client = fakeServer();
+      const result = await applyPlan(
+        buildPlan([
+          row({ queueId: 'EV-001', company: 'Acme [East]' }),
+          row({ queueId: 'EV-002', company: 'Beta Co' }),
+        ], []),
+        client as never, { dryRun: false },
+      );
+
+      expect(result.failures).toHaveLength(1);
+      expect(result.failures[0].queueId).toBe('EV-001');
+      expect(result.failures[0].error).toMatch(/Acme \[East\]/);
+
+      // The second, unrelated row still went through.
+      expect(createBodies(client, 'prospects').map((b) => b.queueId)).toEqual(['EV-002']);
+      expect(result.created.prospects).toBe(1);
+    });
+  });
 });

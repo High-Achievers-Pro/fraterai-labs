@@ -82,6 +82,64 @@ const firstRecord = (payload: unknown, plural: string): TwentyRecord | null => {
   return records.length > 0 ? records[0] : null;
 };
 
+// A live suppression-list run crashed on `name[eq]:Harts Plumbers,
+// Electricians & HVAC Technicians` — a 400 whose message ("'filter' invalid
+// for ' Electricians & HVAC Technicians'") gave away the cause: Twenty's REST
+// filter grammar treats `,` as the top-level AND separator, and does so even
+// for a single bare clause, because `field[op]:value` is auto-wrapped as
+// `and(field[op]:value)` before parsing
+// (packages/twenty-server/.../parse-filter-rest-request.util.ts calls
+// addDefaultConjunctionIfMissing unconditionally). So a value containing a
+// literal comma always splits into a second, malformed clause — this was
+// never specific to the suppression list, it just happened to be the first
+// place a comma-bearing value reached the wire (six of fifty suppression
+// names have one; zero of the 218 already-imported company names do).
+//
+// Twenty's own parser test suite
+// (parse-filter.util.spec.ts, "should parse string filter test 4") asserts
+// `fieldText[gt]:"val,ue"` parses to the value `val,ue` — wrapping in double
+// quotes makes its top-level comma-splitter treat the whole thing as one
+// token, and `formatFieldValue` strips exactly one layer of matching quotes
+// off the result. Confirmed against the live server with read-only GETs: a
+// quoted comma value against a deliberately non-existent company name
+// returns 200 with zero matches (not a 400), and an unescaped ampersand
+// against a real, already-imported company ("TRAX Analytics / Mind &
+// Social") returns an exact match — `&` has no special meaning to this
+// grammar and needs no handling.
+//
+// `[` and `]` are structurally different: the same top-level splitter uses
+// them to toggle an "inside brackets" flag while deciding whether a comma is
+// a real separator, with no documented or verified escape. Live probes with
+// a bracketed value — quoted and unquoted, against a deliberately
+// non-existent company — both returned 200 with zero matches, which is
+// consistent with either a correct empty search or a silently corrupted one;
+// there's no way to tell without risking a wrong match against a real
+// record, and Twenty has zero real values in this dataset containing a
+// bracket, so refusing costs nothing today. A literal `"` inside a
+// comma-bearing value has the same problem in miniature: it would close our
+// own wrapping quotes early. Both cases throw, naming the offending value,
+// rather than silently sending something that might update the wrong
+// record — a wrong match is worse than a refusal.
+export const escapeFilterValue = (value: string): string => {
+  if (/[[\]]/.test(value)) {
+    throw new Error(
+      'Cannot build a Twenty filter for a value containing "[" or "]" — no verified-safe '
+      + `encoding exists for it: ${JSON.stringify(value)}`,
+    );
+  }
+
+  if (!value.includes(',')) return value;
+
+  if (value.includes('"')) {
+    throw new Error(
+      'Cannot build a Twenty filter for a value containing both "," and \'"\' — quoting the '
+      + `value would end at the embedded quote and expose the comma unprotected: ${JSON.stringify(value)}`,
+    );
+  }
+
+  return `"${value}"`;
+};
+
 export const createTwentyClient = (options: TwentyClientOptions = {}) => {
   const {
     maxAttempts = 5,
