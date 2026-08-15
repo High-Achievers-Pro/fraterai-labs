@@ -27,7 +27,7 @@ export const findActiveWorkspaceMember = async (email: string): Promise<Workspac
 
     return {
       id: node.id,
-      userEmail: node.userEmail,
+      userEmail: node.userEmail.toLowerCase(),
       name: [node.name.firstName, node.name.lastName].filter(Boolean).join(' '),
     };
   } catch {

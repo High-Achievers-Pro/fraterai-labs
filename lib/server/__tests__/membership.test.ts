@@ -33,4 +33,15 @@ describe('findActiveWorkspaceMember', () => {
     vi.mocked(twentyGraphQL).mockRejectedValue(new Error('network down'));
     expect(await findActiveWorkspaceMember('a@fraterailabs.com')).toBeNull();
   });
+
+  it('lowercases the returned userEmail even when Twenty stores it mixed-case', async () => {
+    vi.mocked(twentyGraphQL).mockResolvedValue({
+      workspaceMembers: {
+        edges: [{ node: { id: 'wm-1', userEmail: 'John.Doe@FraterAILabs.com', name: { firstName: 'John', lastName: 'Doe' } } }],
+      },
+    } as never);
+
+    const member = await findActiveWorkspaceMember('john.doe@fraterailabs.com');
+    expect(member?.userEmail).toBe('john.doe@fraterailabs.com');
+  });
 });
