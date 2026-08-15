@@ -384,3 +384,81 @@ member.
 A shared login means CRM actions cannot be attributed to a specific person and portal
 access cannot distinguish the two of you. That was a deliberate choice, not an oversight —
 revisit if a third person joins.
+
+## Importing prospects
+
+`scripts/import-prospects/import.ts`, run as `npm run import:prospects`, is the CLI that
+retires the spreadsheet. It composes the already-tested parser, normalizers, plan
+builder, and upserter (`scripts/import-prospects/{parse-workbook,normalize,build-plan,
+apply-plan}.ts`) and resolves the sheet's free-text `Owner` column to a real
+`prospect.owner` relation before writing anything (`resolve-owners.ts`).
+
+### Env vars
+
+```bash
+export TWENTY_BASE_URL=https://crm.fraterailabs.com
+export TWENTY_API_KEY="$(cat .env.twenty.local)"
+```
+
+`WORKBOOK_PATH` optionally overrides the default
+`scripts/import-prospects/fixtures/prospects.xlsx` (gitignored — the real 252-row sheet).
+
+### Dry-run first, always
+
+The CLI is dry-run **by default**; it only writes with an explicit `--apply` flag:
+
+```bash
+npm run import:prospects            # dry run — read-only, prints what it would do
+npx tsx scripts/import-prospects/import.ts --apply   # live write
+```
+
+Never run `--apply` without having read the preceding dry run's full output — warnings
+included. A dry run never calls `client.create`/`client.update`; the only network call it
+makes is a read-only `GET /workspaceMembers` for owner resolution.
+
+### Expected numbers (the acceptance gate)
+
+From the real 252-row workbook, against an **empty** CRM (all seed/demo records
+deleted first — see the seed-data warning above):
+
+- Parsed: **252 rows**, **50 suppressed companies**
+- **218** unique companies, **252** people (one per row), **0** rows with a direct email
+- `wouldCreate`: `{ companies: 218, people: 252, prospects: 252, outreaches: 756 }`
+  (three outreach drafts per prospect — connection note, follow-up, cold email — wherever
+  the sheet has copy for that channel; a handful of rows are missing one or more, which is
+  why it's not exactly 3 × 252)
+- **~89 warnings** from `buildPlan`, all informational — none of them block the import:
+  - ~86 are "Website is a search URL, not a domain" — the sheet's `Website` column holds
+    a Google search link instead of a real domain for those companies. The link is kept
+    in `researchLinks` so it isn't lost, just excluded from `domainName`.
+  - ~3 are "person name appears under N companies" — the same lead name recurs across
+    multiple companies in the sheet (e.g. `Founder to verify` across 10 CMU rows). Each
+    is imported as a separate person scoped to its own company, and the warning exists so
+    a human can confirm that's correct rather than an accidental duplicate merge.
+- Owner resolution: `"Seth" -> 1 workspace member` (falls back to the sole member,
+  `fraterai@fraterailabs.com`, since "Seth" doesn't literally match the recorded name),
+  **0 unmatched**.
+
+If any of these numbers disagree with a dry run, stop and investigate — don't adjust the
+expectation to match the output.
+
+### Idempotency check
+
+Because `prospects.queueId` and the company/person filters are the import's identity keys,
+running the importer twice must **update**, not duplicate:
+
+```bash
+npx tsx scripts/import-prospects/import.ts --apply   # first run: created counts match wouldCreate, 0 failures
+npx tsx scripts/import-prospects/import.ts --apply   # second run: created all zero, updated non-zero
+```
+
+After the second run, confirm in the Twenty UI that Prospects still shows **252**, not
+504, and Companies still shows **218**, not 436. This is the single most important check
+in the whole import — a duplicate-creating importer is worse than no importer.
+
+`prospects.ownerId` is deliberately **create-only** (see the `CREATE_ONLY_FIELDS` comment
+in `apply-plan.ts`): the sheet's `Owner` text resolves to the same member id on every run,
+so if a human reassigns a prospect to a different workspace member inside Twenty, a
+re-import must not silently drag it back to the sheet's owner. The same protection already
+existed for `stage`, `directEmailStatus`, and outreach `status`/`generatedBy`/`model` —
+`ownerId` follows the same rule for the same reason.

@@ -296,6 +296,32 @@ describe('applyPlan', () => {
     expect(createBodies(client, 'prospects')[0]).not.toHaveProperty('ownerId');
   });
 
+  it('sends ownerId on create but never on update, so a human reassignment survives a re-import', async () => {
+    // ownerId is create-only for the same reason `stage` is: resolveOwners()
+    // deterministically re-derives the same member id from the sheet's Owner
+    // text every run. If update kept sending it, a prospect reassigned to a
+    // different member inside the Twenty UI would get dragged back to the
+    // sheet's owner on the very next import — silently, with no error.
+    const client = fakeServer();
+    const ownerIdByOwnerText = new Map([['Seth', 'wm-1']]);
+
+    await applyPlan(
+      buildPlan([row()], []), client as never, { dryRun: false, ownerIdByOwnerText },
+    );
+    expect(createBodies(client, 'prospects')[0].ownerId).toBe('wm-1');
+
+    // Stand in for a human reassigning the prospect inside the CRM between runs.
+    const prospect = client.only('prospects');
+    prospect.fields.ownerId = 'wm-reassigned-by-human';
+
+    await applyPlan(
+      buildPlan([row()], []), client as never, { dryRun: false, ownerIdByOwnerText },
+    );
+
+    expect(updateBodies(client, 'prospects')[0]).not.toHaveProperty('ownerId');
+    expect(prospect.fields.ownerId).toBe('wm-reassigned-by-human');
+  });
+
   it('fails the row when a create response carries no usable record id', async () => {
     // `{ data: { id } }` instead of `{ data: { company: { id } } }` used to
     // yield undefined, and the person was then created with an undefined

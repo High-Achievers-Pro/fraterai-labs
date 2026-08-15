@@ -45,10 +45,18 @@ type UpsertCache = Map<string, string>;
 // re-sending them on update would drag work done inside the CRM backwards: a
 // prospect advanced to CONTACTED reset to SOURCED, an outreach marked SENT
 // reset to DRAFT while keeping its sentAt. They are written once, at create.
+//
+// prospects.ownerId belongs here for the same reason, even though the sheet
+// *does* have an Owner column: resolveOwners() re-derives the same member id
+// from that column's text deterministically on every run, so leaving ownerId
+// updatable would silently drag a prospect a human reassigned inside the
+// Twenty UI back to the sheet's owner on the next import. The sheet asserts
+// ownership once, at creation; reassignment afterward is the CRM's job, not
+// the importer's.
 const CREATE_ONLY_FIELDS: Record<string, readonly string[]> = {
   companies: ['headcountStatus'],
   people: ['directEmailStatus'],
-  prospects: ['stage'],
+  prospects: ['stage', 'ownerId'],
   outreaches: ['status', 'generatedBy', 'model'],
 };
 

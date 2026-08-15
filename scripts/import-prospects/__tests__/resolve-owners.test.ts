@@ -15,10 +15,10 @@ describe('buildOwnerLookup', () => {
   });
 
   it('normalizes a trailing space in a real member firstName', () => {
-    // The live workspace's sole member is recorded as firstName "Miguel  "
-    // (trailing space) — the exact case this importer must not choke on.
+    // The live workspace's sole member is recorded as firstName "Miguel "
+    // (one trailing space) — the exact case this importer must not choke on.
     const lookup = buildOwnerLookup([
-      { id: 'wm-2', name: { firstName: 'Miguel  ', lastName: 'Twahirwa' } },
+      { id: 'wm-2', name: { firstName: 'Miguel ', lastName: 'Twahirwa' } },
     ]);
     expect(lookup.get('miguel')).toBe('wm-2');
     expect(lookup.get('miguel twahirwa')).toBe('wm-2');
@@ -49,7 +49,7 @@ describe('resolveOwners', () => {
 
   it('falls back to the sole workspace member when there is no name match', () => {
     const result = resolveOwners(['Seth'], [
-      { id: 'wm-solo', name: { firstName: 'Miguel  ', lastName: 'Twahirwa' } },
+      { id: 'wm-solo', name: { firstName: 'Miguel ', lastName: 'Twahirwa' } },
     ]);
     expect(result.ownerIdByOwnerText.get('Seth')).toBe('wm-solo');
     expect(result.warnings).toEqual([]);
