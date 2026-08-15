@@ -1,3 +1,5 @@
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { applyPlan } from './apply-plan';
 import { applySuppressions } from './apply-suppressions';
 import { buildPlan } from './build-plan';
@@ -8,6 +10,41 @@ import { createTwentyClient } from './twenty-rest';
 import type { TwentyRecord } from './twenty-rest';
 
 const WORKBOOK = process.env.WORKBOOK_PATH ?? 'scripts/import-prospects/fixtures/prospects.xlsx';
+
+// `--limit N` truncates to the first N parsed rows so a rehearsal run
+// (staging, a schema change, a new agent prompt) can use a small sample
+// instead of all 252. Plain first-N, not a stratified sample: the sheet's
+// two queue-id prefixes are not interleaved (EV-001..EV-200 then
+// CMU-001..CMU-052), so any small N is EV-only — a mixed small sample would
+// require picking non-contiguous rows, which conflicts with "first N" and
+// would blur which warnings belong to the requested subset. A caller who
+// wants CMU rows (duplicate-name warnings, the "Founder to verify" block)
+// needs a larger N or a dedicated CMU-only workbook slice.
+//
+// Validated eagerly, before any network or file I/O: an `--apply` run with a
+// silently-ignored bad limit is the worst failure mode this flag could have,
+// so a malformed value must fail loudly and immediately rather than fall
+// through to a full, unintended write.
+export const parseLimitArg = (argv: string[]): number | undefined => {
+  const eqArg = argv.find((arg) => arg.startsWith('--limit='));
+  const index = argv.indexOf('--limit');
+  const raw = eqArg !== undefined ? eqArg.slice('--limit='.length)
+    : index === -1 ? undefined : argv[index + 1];
+
+  if (eqArg === undefined && index === -1) return undefined;
+
+  const value = Number(raw);
+  if (raw === undefined || raw.trim() === '' || !Number.isInteger(value) || value <= 0) {
+    throw new Error(
+      `--limit requires a positive whole number, got ${JSON.stringify(raw ?? null)}`,
+    );
+  }
+  return value;
+};
+
+export const applyLimit = <T>(rows: T[], limit: number | undefined): T[] => (
+  limit === undefined ? rows : rows.slice(0, limit)
+);
 
 // Twenty's workspaceMember records carry a composite `name` field, the same
 // shape Person uses elsewhere in this importer. Anything missing falls back
@@ -31,13 +68,26 @@ const main = async () => {
   // it. Like the rest of the CLI, writing still requires --apply — without
   // it, --suppress reports matches without marking anything.
   const suppress = process.argv.includes('--suppress');
+  // Fail fast, before the client is created or the workbook is touched — a
+  // malformed value must never fall through to a full run.
+  const limit = parseLimitArg(process.argv);
   const client = createTwentyClient();
 
-  const rows = await parseWorkbook(WORKBOOK);
+  const parsedRows = await parseWorkbook(WORKBOOK);
+  const rows = applyLimit(parsedRows, limit);
   const suppressed = await parseSuppressionList(WORKBOOK);
   const plan = buildPlan(rows, suppressed);
 
-  console.log(`Parsed ${rows.length} rows, ${suppressed.length} suppressed companies`);
+  if (limit !== undefined) {
+    // Printed prominently and first: a limited run's counts will not match
+    // the documented 252/218/252/756 full-import gate, and a log read later
+    // must not be mistaken for a full import.
+    console.log(`\n${'='.repeat(72)}`);
+    console.log(`LIMIT: ${rows.length} of ${parsedRows.length} rows (subset — NOT a full import)`);
+    console.log('='.repeat(72));
+  }
+
+  console.log(`\nParsed ${rows.length} rows, ${suppressed.length} suppressed companies`);
 
   // Read-only: fetches the workspace member list so the sheet's free-text
   // Owner column can be resolved to a real prospect.owner relation before
@@ -102,7 +152,25 @@ const main = async () => {
   if (dryRun) console.log('\nRe-run with --apply to write.');
 };
 
-main().catch((error) => {
-  console.error(error);
-  process.exit(1);
-});
+// Guarded so this module can be imported for unit tests (e.g. parseLimitArg,
+// applyLimit) without also kicking off a real run — process.argv[1] only
+// resolves to this file's path when it is the script actually invoked.
+// Compared as filesystem paths, not raw URL strings: import.meta.url
+// percent-encodes characters like spaces in the path (this repo lives under
+// "Frater AI Labs"), which a naive `file://${process.argv[1]}` string
+// comparison would never match, silently turning every invocation into a
+// no-op.
+const isMainModule = () => {
+  try {
+    return fileURLToPath(import.meta.url) === path.resolve(process.argv[1] ?? '');
+  } catch {
+    return false;
+  }
+};
+
+if (isMainModule()) {
+  main().catch((error) => {
+    console.error(error);
+    process.exit(1);
+  });
+}
