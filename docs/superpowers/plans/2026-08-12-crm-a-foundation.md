@@ -877,6 +877,8 @@ Run: `cat node_modules/twenty-sdk/dist/define/views/*.d.ts` from `twenty-app/`, 
 
 Create the view over `PROSPECT_OBJECT_ID`, named "Pipeline", grouped by `PROSPECT_STAGE_FIELD_ID`, with visible fields `queueId`, `company`, `person`, `stage`, `leadSource`, `recommendedAiWorkflow`.
 
+Do not add `name` to the visible fields: Twenty auto-creates a `name` TEXT field on every custom object (see the comment block in `prospect.object.ts`) and it is always blank on Prospect records since `queueId` is the label identifier — leave it out of this view.
+
 - [ ] **Step 3: Add the navigation item**
 
 Create the navigation menu item pointing at the Prospects object with icon `IconTargetArrow`.

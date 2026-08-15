@@ -28,6 +28,21 @@ export enum ProspectLeadSource {
   INBOUND_WEBSITE = 'INBOUND_WEBSITE',
 }
 
+// NOTE — undeclared `name` TEXT field on this object (live-verified 2026-08-14):
+// Twenty auto-creates a `name` TEXT field (isSystem: false, label "Name") on every
+// custom object. This is unconditional server-side behavior in Twenty's object-
+// creation pipeline (`buildNameFlatFieldMetadataForCustomObject`, called from
+// `from-create-object-input-to-flat-object-metadata-...util.ts:93-96`), gated only
+// by a `createObjectInput.skipNameField === true` flag. That flag is NOT exposed
+// on `ObjectManifest` in twenty-sdk 2.31.0 (see `ObjectManifest` in
+// `node_modules/twenty-sdk/dist/define/index.d.ts`), so there is no way to
+// suppress or remove this field from an app manifest — it cannot be prevented
+// here, and it is not a mistake in this file.
+// It is unused: `queueId` (PROSPECT_QUEUE_ID_FIELD_ID) is the label identifier
+// for this object, so `name` is always blank and has no meaning. Do not populate
+// it, and exclude it from any view's visible fields (see Task 7 in the plan doc,
+// `docs/superpowers/plans/2026-08-12-crm-a-foundation.md`) so it doesn't surface
+// as a meaningless blank "Name" input on Prospect record forms.
 export default defineObject({
   universalIdentifier: PROSPECT_OBJECT_ID,
   nameSingular: 'prospect',
