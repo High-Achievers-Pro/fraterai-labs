@@ -319,10 +319,40 @@ references* (`${{Postgres.DATABASE_URL}}`) rather than literal values — forkin
 environment re-resolves them against that environment's own services. Hardcoded values
 would have silently pointed staging at production.
 
-### Remaining step: create the staging admin account
+### Seeding staging
+
+Staging is seeded with a **12-row sample**, not the full 252 — fast to re-seed, and
+rehearsing a schema change or an agent prompt does not need the whole set. The importer
+takes `--limit N` for this:
+
+```bash
+TWENTY_BASE_URL=https://twenty-server-staging-361b.up.railway.app \
+TWENTY_API_KEY="$(cat .env.twenty-staging.local)" \
+  npx tsx scripts/import-prospects/import.ts --limit 12 --apply
+```
+
+It prints a `LIMIT: 12 of 252 rows (subset — NOT a full import)` banner so a limited run
+cannot be mistaken for a full one in a log. A malformed limit (`0`, negative,
+non-numeric) exits non-zero rather than silently importing everything.
+
+Current staging contents: **12 prospects, 12 companies, 12 people, 36 outreach drafts**,
+verified idempotent (a re-run created 0 and updated all 72 records).
+
+`--limit` takes the first N rows, which are all `EV-*`. The `CMU-*` rows — carrying the
+`Founder to verify` placeholder block and the duplicate-person-name cases — start at row
+201, so a small sample cannot reach them. When rehearsing anything that depends on those
+edge cases, seed the full 252 instead.
+
+**Twenty seeds every new workspace with 5 demo companies, 5 demo people and 6 demo
+opportunities** (Notion, Stripe, Figma, Airbnb, Anthropic and their founders). These were
+deleted from staging after seeding — but they are why the first count read 17 rather than
+12. Delete them on any freshly created workspace before trusting a count.
+
+### How the staging admin account was created
 
 `twenty apply` needs an API key, and an API key needs an account. Twenty's auth mutations
-are not served on `/graphql` (the record API), so this cannot be scripted from here.
+are not served on `/graphql` (the record API), so this cannot be scripted — it was done in
+the browser. Repeat these steps if staging is ever rebuilt:
 
 1. Open the staging URL, sign up with any address and a strong password (this workspace is
    throwaway; it is not domain-locked)
@@ -445,8 +475,8 @@ data in place makes those numbers 223 and 257, so the gate would fail — or wor
       pipeline — 252 prospects, 218 companies, 756 outreach drafts. Managed-Postgres backup
       retention depends on the Railway plan and has not been verified for this account.
       Take a manual dump before any Twenty version upgrade regardless.
-- [~] Task 14: staging environment — **infrastructure done and isolation verified**; needs
-      an admin account created in the browser before the app package can be deployed to it
+- [x] **Task 14 complete.** Staging is live with the full schema deployed (178 metadata
+      entities, 0 destroys) and seeded with a 12-row sample, verified idempotent.
 - [x] Tasks 3-7 complete: `twenty-app` deployed — Prospect and Outreach objects, 16 custom
       fields on Company and Person, three two-sided relations incl. owner, and the Pipeline
       kanban view with sidebar navigation. `npx twenty plan` reports no drift.
@@ -486,7 +516,7 @@ another operation can push you into throttling.
       importer's `--suppress` dry run reporting `50 entries, 0 matched, 0 marked`). The
       list exists to keep that true as enrichment adds companies; re-run
       `--suppress --apply` after any run that adds them.
-- [~] Task 14: staging — infrastructure up, awaiting an admin account (see Staging below)
+- [x] Task 14 complete — staging live, schema deployed, 12-row sample seeded
 
 ## Staging environment
 
@@ -517,10 +547,40 @@ references* (`${{Postgres.DATABASE_URL}}`) rather than literal values — forkin
 environment re-resolves them against that environment's own services. Hardcoded values
 would have silently pointed staging at production.
 
-### Remaining step: create the staging admin account
+### Seeding staging
+
+Staging is seeded with a **12-row sample**, not the full 252 — fast to re-seed, and
+rehearsing a schema change or an agent prompt does not need the whole set. The importer
+takes `--limit N` for this:
+
+```bash
+TWENTY_BASE_URL=https://twenty-server-staging-361b.up.railway.app \
+TWENTY_API_KEY="$(cat .env.twenty-staging.local)" \
+  npx tsx scripts/import-prospects/import.ts --limit 12 --apply
+```
+
+It prints a `LIMIT: 12 of 252 rows (subset — NOT a full import)` banner so a limited run
+cannot be mistaken for a full one in a log. A malformed limit (`0`, negative,
+non-numeric) exits non-zero rather than silently importing everything.
+
+Current staging contents: **12 prospects, 12 companies, 12 people, 36 outreach drafts**,
+verified idempotent (a re-run created 0 and updated all 72 records).
+
+`--limit` takes the first N rows, which are all `EV-*`. The `CMU-*` rows — carrying the
+`Founder to verify` placeholder block and the duplicate-person-name cases — start at row
+201, so a small sample cannot reach them. When rehearsing anything that depends on those
+edge cases, seed the full 252 instead.
+
+**Twenty seeds every new workspace with 5 demo companies, 5 demo people and 6 demo
+opportunities** (Notion, Stripe, Figma, Airbnb, Anthropic and their founders). These were
+deleted from staging after seeding — but they are why the first count read 17 rather than
+12. Delete them on any freshly created workspace before trusting a count.
+
+### How the staging admin account was created
 
 `twenty apply` needs an API key, and an API key needs an account. Twenty's auth mutations
-are not served on `/graphql` (the record API), so this cannot be scripted from here.
+are not served on `/graphql` (the record API), so this cannot be scripted — it was done in
+the browser. Repeat these steps if staging is ever rebuilt:
 
 1. Open the staging URL, sign up with any address and a strong password (this workspace is
    throwaway; it is not domain-locked)
