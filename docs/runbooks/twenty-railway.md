@@ -69,6 +69,24 @@ They were generated with `openssl rand -base64 32` and written straight into Rai
 `railway variables --set-from-stdin`, so the values never appear in a shell history or a
 transcript.
 
+### Never read the `.env.*.local` files
+
+`.env.twenty.local`, `.env.twenty-staging.local`, `.env.google-id.local`, and
+`.env.google-secret.local` each hold a **single bare value on one line** — there is no
+`KEY=value` prefix. Commands that are safe against a normal dotenv file are not safe
+here: `cut -d= -f1` prints the entire line when the line has no `=`, which is how all
+four values were leaked into a transcript on 2026-08-15 (the second such leak in this
+project).
+
+To use a value, pass it into a subprocess without echoing it:
+
+```bash
+TWENTY_API_KEY="$(cat .env.twenty.local)" npm run import:prospects
+```
+
+To check a file is populated, use `wc -c`. To learn what a file holds, read its name.
+Never `cat`, `grep`, `head`, or `cut` these files.
+
 Both are saved in the team password manager as of 2026-08-15, so Railway is no longer the
 only copy. Keep it that way: losing `ENCRYPTION_KEY` makes every stored credential —
 connected mailboxes, app API keys — permanently unrecoverable, and no restore of the
