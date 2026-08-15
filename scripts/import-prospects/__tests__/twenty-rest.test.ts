@@ -60,3 +60,38 @@ describe('twenty-rest findByFilter', () => {
     );
   });
 });
+
+describe('twenty-rest list', () => {
+  beforeEach(() => {
+    vi.stubEnv('TWENTY_API_KEY', 'test-key');
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.unstubAllEnvs();
+  });
+
+  it('returns every record in the collection, not just the first', async () => {
+    respondWith({ data: { workspaceMembers: [{ id: 'wm-1' }, { id: 'wm-2' }] } });
+    const records = await createTwentyClient().list('workspaceMembers');
+    expect(records).toEqual([{ id: 'wm-1' }, { id: 'wm-2' }]);
+  });
+
+  it('returns an empty array for an empty collection', async () => {
+    respondWith({ data: { workspaceMembers: [] } });
+    expect(await createTwentyClient().list('workspaceMembers')).toEqual([]);
+  });
+
+  it('throws on an unexpected shape, same as findByFilter', async () => {
+    respondWith({ data: { workspaceMembers: { edges: [] } } });
+    await expect(createTwentyClient().list('workspaceMembers')).rejects.toThrow(/unexpected shape/);
+  });
+
+  it('sends an explicit limit without a filter param', async () => {
+    const fetchMock = respondWith({ data: { workspaceMembers: [] } });
+    await createTwentyClient().list('workspaceMembers');
+    const url = String(fetchMock.mock.calls[0][0]);
+    expect(url).toContain('limit=200');
+    expect(url).not.toContain('filter=');
+  });
+});

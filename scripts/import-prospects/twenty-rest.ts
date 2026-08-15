@@ -22,13 +22,14 @@ const request = async <T>(path: string, init: RequestInit = {}): Promise<T> => {
   return (await response.json()) as T;
 };
 
-// Throws rather than defaulting to "not found". The filter grammar below is
-// unverified against a live server: if this Twenty version rejects `limit`,
-// uses a different operator syntax, or nests results differently, a silent
-// `null` would make every lookup miss, every record be created afresh, and a
-// second run duplicate the entire import — while reporting a clean run with
-// zero failures. Failing loudly on the first lookup is strictly better.
-const firstRecord = (payload: unknown, plural: string): TwentyRecord | null => {
+// Throws rather than defaulting to "not found" / "empty". The filter grammar
+// below is unverified against a live server: if this Twenty version rejects
+// `limit`, uses a different operator syntax, or nests results differently, a
+// silent empty result would make every lookup miss, every record be created
+// afresh, and a second run duplicate the entire import — while reporting a
+// clean run with zero failures. Failing loudly on the first lookup is
+// strictly better.
+const recordsFor = (payload: unknown, plural: string): TwentyRecord[] => {
   const data = (payload as { data?: unknown } | null)?.data;
   const records = data && typeof data === 'object'
     ? (data as Record<string, unknown>)[plural]
@@ -44,7 +45,12 @@ const firstRecord = (payload: unknown, plural: string): TwentyRecord | null => {
     );
   }
 
-  return records.length > 0 ? (records[0] as TwentyRecord) : null;
+  return records as TwentyRecord[];
+};
+
+const firstRecord = (payload: unknown, plural: string): TwentyRecord | null => {
+  const records = recordsFor(payload, plural);
+  return records.length > 0 ? records[0] : null;
 };
 
 export const createTwentyClient = () => ({
@@ -53,6 +59,14 @@ export const createTwentyClient = () => ({
   // before the first real run and adjust callers if it differs.
   findByFilter: async (plural: string, filter: string) =>
     firstRecord(await request(`/${plural}?filter=${encodeURIComponent(filter)}&limit=1`), plural),
+
+  // Unfiltered listing, used for small, whole-collection lookups (workspace
+  // members) rather than the per-record identity checks findByFilter does.
+  // `limit` default is generous for a handful of workspace members, not a
+  // pagination strategy — callers with genuinely large collections need more
+  // than this.
+  list: async (plural: string, limit = 200): Promise<TwentyRecord[]> =>
+    recordsFor(await request(`/${plural}?limit=${limit}`), plural),
 
   create: async (plural: string, body: unknown) =>
     request<{ data: Record<string, TwentyRecord> }>(`/${plural}`, {

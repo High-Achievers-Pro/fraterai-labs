@@ -272,6 +272,30 @@ describe('applyPlan', () => {
     expect(createBodies(client, 'companies')[0]).not.toHaveProperty('domainName');
   });
 
+  it('sets ownerId on the prospect body when the owner resolves', async () => {
+    const client = fakeServer();
+    const ownerIdByOwnerText = new Map([['Seth', 'wm-1']]);
+    await applyPlan(
+      buildPlan([row()], []), client as never, { dryRun: false, ownerIdByOwnerText },
+    );
+    expect(createBodies(client, 'prospects')[0].ownerId).toBe('wm-1');
+  });
+
+  it('omits ownerId rather than sending undefined when the owner does not resolve', async () => {
+    const client = fakeServer();
+    const ownerIdByOwnerText = new Map<string, string | undefined>([['Seth', undefined]]);
+    await applyPlan(
+      buildPlan([row()], []), client as never, { dryRun: false, ownerIdByOwnerText },
+    );
+    expect(createBodies(client, 'prospects')[0]).not.toHaveProperty('ownerId');
+  });
+
+  it('omits ownerId when no owner map is passed at all', async () => {
+    const client = fakeServer();
+    await applyPlan(buildPlan([row()], []), client as never, { dryRun: false });
+    expect(createBodies(client, 'prospects')[0]).not.toHaveProperty('ownerId');
+  });
+
   it('fails the row when a create response carries no usable record id', async () => {
     // `{ data: { id } }` instead of `{ data: { company: { id } } }` used to
     // yield undefined, and the person was then created with an undefined

@@ -1,7 +1,16 @@
 import type { ImportPlan, PlanEntry } from './types';
 import type { TwentyClient } from './twenty-rest';
 
-export type ApplyOptions = { dryRun: boolean };
+export type ApplyOptions = {
+  dryRun: boolean;
+  // Resolved from the sheet's free-text Owner column to a workspaceMember id
+  // by import.ts's owner-resolution step (see resolve-owners.ts), keyed on
+  // the owner text exactly as trimmed from the row. Absent, or a row whose
+  // trimmed owner text has no entry, means the prospect is written without
+  // an owner rather than failing the row — an unassigned prospect is
+  // recoverable, a failed import is not.
+  ownerIdByOwnerText?: Map<string, string | undefined>;
+};
 
 export type ApplyResult = {
   wouldCreate: { companies: number; people: number; prospects: number; outreaches: number };
@@ -98,6 +107,7 @@ const upsert = async (
 
 const applyEntry = async (
   entry: PlanEntry, client: TwentyClient, result: ApplyResult, cache: UpsertCache,
+  ownerIdByOwnerText?: Map<string, string | undefined>,
 ) => {
   const companyId = await upsert(
     client, 'companies', `name[eq]:${entry.company.name}`,
@@ -114,9 +124,10 @@ const applyEntry = async (
     { ...entry.person, companyId }, result, cache,
   );
 
+  const ownerId = ownerIdByOwnerText?.get(entry.row.owner.trim());
   const prospectId = await upsert(
     client, 'prospects', `queueId[eq]:${entry.prospect.queueId}`,
-    { ...entry.prospect, companyId, personId }, result, cache,
+    { ...entry.prospect, companyId, personId, ownerId }, result, cache,
   );
 
   for (const outreach of entry.outreaches) {
@@ -147,7 +158,7 @@ export const applyPlan = async (
 
   for (const entry of plan.entries) {
     try {
-      await applyEntry(entry, client, result, cache);
+      await applyEntry(entry, client, result, cache, options.ownerIdByOwnerText);
     } catch (error) {
       result.failures.push({
         queueId: entry.prospect.queueId,
