@@ -1,0 +1,20 @@
+{
+  "name": "frater-crm",
+  "version": "0.1.0",
+  "private": true,
+  "license": "UNLICENSED",
+  "engines": {
+    "node": ">=24.5.0"
+  },
+  "scripts": {
+    "twenty": "twenty",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@types/node": "^24.7.2",
+    "twenty-sdk": "2.31.0",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.0"
+  }
+}

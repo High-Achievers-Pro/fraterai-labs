@@ -46,3 +46,8 @@ next-env.d.ts
 # synthetic test fixture (Ada Lovelace / Grace Hopper), which is tracked.
 *.xlsx
 !scripts/import-prospects/__tests__/fixtures/mini.xlsx
+
+# twenty-app (Twenty CRM application package)
+twenty-app/node_modules
+twenty-app/dist
+twenty-app/.twenty
