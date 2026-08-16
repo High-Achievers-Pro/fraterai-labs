@@ -7,6 +7,7 @@ export type SessionPayload = {
   email: string;
   name: string;
   workspaceMemberId: string;
+  purpose: 'session';
   expiresAt: number;
 };
 
@@ -25,10 +26,14 @@ const sign = async (body: string): Promise<string> =>
   toBase64Url(await crypto.subtle.sign('HMAC', await importKey(), encoder.encode(body)));
 
 export const createSessionCookie = async (
-  payload: Omit<SessionPayload, 'expiresAt'>,
+  payload: Omit<SessionPayload, 'expiresAt' | 'purpose'>,
   ttlSeconds: number,
 ): Promise<string> => {
-  const full: SessionPayload = { ...payload, expiresAt: Date.now() + ttlSeconds * 1000 };
+  const full: SessionPayload = {
+    ...payload,
+    purpose: 'session',
+    expiresAt: Date.now() + ttlSeconds * 1000,
+  };
   const body = Buffer.from(JSON.stringify(full)).toString('base64url');
   return `${body}.${await sign(body)}`;
 };
@@ -53,6 +58,10 @@ export const readSessionCookie = async (cookie: string | undefined): Promise<Ses
 
   try {
     const payload = JSON.parse(Buffer.from(body, 'base64url').toString()) as SessionPayload;
+    // `purpose` separates this token type from magic-link tokens, which are
+    // signed with the same SESSION_SECRET. Without this check, a magic-link
+    // token would be redeemable as a session cookie and vice versa.
+    if (payload.purpose !== 'session') return null;
     if (typeof payload.expiresAt !== 'number' || payload.expiresAt < Date.now()) return null;
     if (typeof payload.email !== 'string' || !payload.email) return null;
     return payload;

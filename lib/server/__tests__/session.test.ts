@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
+import { createMagicToken } from '../magic-link';
 import { createSessionCookie, readSessionCookie } from '../session';
 
 const payload = {
@@ -42,5 +43,16 @@ describe('session', () => {
     const cookie = await createSessionCookie(payload, 3600);
     process.env.SESSION_SECRET = 'rotated-secret';
     expect(await readSessionCookie(cookie)).toBeNull();
+  });
+
+  it('stamps the payload with purpose: session', async () => {
+    const cookie = await createSessionCookie(payload, 3600);
+    const session = await readSessionCookie(cookie);
+    expect(session?.purpose).toBe('session');
+  });
+
+  it('REFUSES a magic-link token presented as a session cookie', async () => {
+    const token = await createMagicToken('someone@fraterailabs.com');
+    expect(await readSessionCookie(token)).toBeNull();
   });
 });

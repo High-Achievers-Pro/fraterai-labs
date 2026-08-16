@@ -1,3 +1,5 @@
+import MagicLinkForm from './magic-link-form';
+
 type LoginPageProps = {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 };
@@ -27,7 +29,7 @@ export default async function PortalLoginPage({ searchParams }: LoginPageProps) 
           Continue with Google
         </a>
 
-        {/* Task 5b adds a magic-link form for allowlisted collaborators here. */}
+        <MagicLinkForm />
       </div>
     </section>
   );
