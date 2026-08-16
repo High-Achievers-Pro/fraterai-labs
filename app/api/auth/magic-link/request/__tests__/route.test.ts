@@ -23,21 +23,12 @@ vi.mock('@/lib/server/email', () => ({
   sendMagicLinkEmail: (...args: unknown[]) => sendMagicLinkEmail(...args),
 }));
 
-// Mirrors the real implementation (lib/server/env.ts) exactly, reading
-// process.env fresh on every call — mocked rather than imported via
-// importOriginal() because the `@/` path alias is only configured for
-// tsconfig/Next's bundler, not for vitest's resolver, so a real resolution
-// of '@/lib/server/env' fails under vitest. This still exercises the
-// SERVER_URL-missing case faithfully (delete process.env.SERVER_URL and
-// this mock throws, exactly like the real requireEnv would).
-vi.mock('@/lib/server/env', () => ({
-  requireEnv: (name: string) => {
-    const value = process.env[name];
-    if (!value) throw new Error(`Missing required environment variable: ${name}`);
-    return value;
-  },
-  optionalEnv: (name: string) => process.env[name],
-}));
+// lib/server/env is intentionally NOT mocked — the real requireEnv/
+// optionalEnv are simple process.env reads with no side effects, and
+// resolve fine under vitest now that the '@/' alias exists (see
+// vitest.config.ts and final-review.md I7). Using the real module means
+// the SERVER_URL-missing test below exercises requireEnv's actual throw,
+// not a hand-reimplementation of it that could drift from the real one.
 
 // after() needs a Next.js request-scoped AsyncLocalStorage that a bare unit
 // test never sets up (calling the real one throws "`after` was called

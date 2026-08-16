@@ -1,35 +1,20 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { NextRequest } from 'next/server';
+import { SIGNATURE_HEADER, TIMESTAMP_HEADER } from '@/lib/server/webhook-verify';
 
-// Header names duplicated here as literals rather than imported from
-// lib/server/webhook-verify.ts: that module is mocked below via a bare
-// literal specifier (no importOriginal), the same technique used for
-// '@/lib/server/env' in app/api/auth/magic-link/request/__tests__/route.test.ts
-// — real resolution of a '@/'-aliased module fails under vitest (no alias
-// configured in vitest.config.ts), so importOriginal() would throw. These
-// must be kept in sync with the real SIGNATURE_HEADER / TIMESTAMP_HEADER
-// constants by hand if that file's assumed scheme is ever corrected.
-const SIGNATURE_HEADER = 'x-twenty-signature';
-const TIMESTAMP_HEADER = 'x-twenty-timestamp';
-
+// Partially mocked via importOriginal, now that vitest resolves the '@/'
+// alias (see vitest.config.ts and final-review.md I7): SIGNATURE_HEADER
+// and TIMESTAMP_HEADER above come from the real module, so they can never
+// drift from what the route actually reads — only verifyWebhookSignature
+// itself is replaced.
 const verifyWebhookSignature = vi.fn();
-vi.mock('@/lib/server/webhook-verify', () => ({
-  verifyWebhookSignature: (...args: unknown[]) => verifyWebhookSignature(...args),
-  SIGNATURE_HEADER,
-  TIMESTAMP_HEADER,
-}));
-
-// Mirrors the real implementation (lib/server/env.ts) exactly — same reason
-// as the magic-link request route test: the '@/' alias does not resolve
-// under vitest, so this can't use importOriginal().
-vi.mock('@/lib/server/env', () => ({
-  requireEnv: (name: string) => {
-    const value = process.env[name];
-    if (!value) throw new Error(`Missing required environment variable: ${name}`);
-    return value;
-  },
-  optionalEnv: (name: string) => process.env[name],
-}));
+vi.mock('@/lib/server/webhook-verify', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/server/webhook-verify')>();
+  return {
+    ...actual,
+    verifyWebhookSignature: (...args: unknown[]) => verifyWebhookSignature(...args),
+  };
+});
 
 // after() needs a Next.js request-scoped AsyncLocalStorage that a bare unit
 // test never sets up. Mocking it to capture-rather-than-run the callback is
