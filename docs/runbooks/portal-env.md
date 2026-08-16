@@ -238,3 +238,89 @@ rejects every real Twenty webhook until this is fixed.
 `lib/server/webhook-verify.ts` (header names, signed-bytes format, digest
 encoding, any prefix) to match what's actually observed — then record the
 confirmed values in this section, replacing this note.
+
+---
+
+# Plan B outstanding items (recorded 2026-08-16)
+
+Plan B's twelve code tasks are complete and reviewed; **Task 11 (deploy) is not started** and is
+entirely human-gated. This section is the durable record of what remains — the SDD ledger it came
+from is git-ignored scratch.
+
+## Credentials to create or rotate
+
+| Item | Why | Notes |
+|---|---|---|
+| Twenty **production** API key | Rotate — leaked into a transcript 2026-08-15 | Settings → APIs |
+| Twenty **staging** API key | Rotate — same leak | |
+| Google OAuth **client secret** | Rotate — same leak | Client ID is public, no action |
+| Cloudflare **Turnstile** site + secret key | New. Gates the magic-link endpoint and the contact form | See the deploy gate below |
+| Google Workspace **app password** | New. SMTP sender for magic links | Long-lived full-send credential — chosen over a scoped Resend key |
+| `SERVER_URL` | New. `https://www.fraterailabs.com` | Security control, not config: it stops the magic-link email's origin coming from an attacker-controlled `Host` header |
+| Google Console **redirect URIs** | `https://www.fraterailabs.com/api/auth/google/callback` and `http://localhost:3000/api/auth/google/callback` | Same OAuth client as Plan A |
+
+Write values into git-ignored files or the Vercel dashboard directly. Never paste them into a chat
+transcript — see the "Never read the `.env.*.local` files" section of `twenty-railway.md`.
+
+## Deploy gate: Turnstile must be configured before the branch ships
+
+The contact form is live lead capture that works in production **today**. Post-Plan-B it routes
+through `/api/leads/inbound`, which verifies a Turnstile token. `verifyTurnstileToken` fails closed,
+so with the keys unset **every inbound lead is rejected**.
+
+`instrumentation.ts` now throws at boot in production when the keys are missing, so a misconfigured
+deploy fails loudly rather than silently rejecting customers. Do not remove that guard.
+
+## Verification that needs a live API key
+
+Run these after rotation, before trusting the corresponding code paths.
+
+1. **The `workspaceMembers` filter** — the whole auth boundary rests on this one query. The shape is
+   confirmed against the generated schema, but confirm live: query an email guaranteed absent and
+   assert zero edges, then query a known member and assert exactly that member.
+2. **Inbound lead idempotency — use a DOUBLE submission, not a single create.** A single create
+   proves nothing. The REST dot-and-bracket filter grammar is the one layer the schema cannot
+   settle; if it silently returns empty rather than erroring, every resubmission creates a duplicate
+   Company and Person. Expected outcome: 1 company, 1 person, **2** prospects (`createProspect` is
+   create-only by design). Decide that expectation before running, or the test cannot fail.
+3. **A membership-revocation walkthrough** — remove a member and confirm the portal denies them.
+   Decides whether the 8-hour session TTL should be cut further.
+4. **Turnstile set-but-WRONG**, not merely unset — the likelier configuration error.
+5. **A Twenty-outage submission** — confirms the HubSpot fallback still captures the lead.
+6. **The magic-link door end to end**, once the app password exists. Three of its four properties are
+   unit-tested; none has been observed.
+7. **Sign-out actually sticks in a real browser.** The `__Host-` cookie prefix makes a deletion
+   header without `Secure` invalid, and no in-memory test can catch it.
+8. **`npm run build` then grep `.next/static`** for the rotated Twenty key. Expected: clean.
+
+## Twenty webhook signature scheme is ASSUMED, not observed
+
+`lib/server/webhook-verify.ts` carries a clearly-marked block of assumed values — header names, the
+signed-payload format, the digest encoding, and the HMAC algorithm. They could not be observed: no
+live instance was available and the vendored SDK carries no webhook code.
+
+**Until corrected, the receiver 401s every real webhook.** That is fail-closed and safe, and nothing
+depends on it. To correct it: create a test webhook in Twenty (Settings → Webhooks) pointed at any
+request-capture endpoint, record the real headers and signed-payload format, and edit that one block.
+The event-id field name used for deduplication is also unconfirmed.
+
+## Two sign-in checks that need a human with a browser
+
+Plan B's Definition of Done requires both against the deployed URL:
+
+- a real `@fraterailabs.com` account reaches `/portal`
+- a **personal Gmail account is rejected** — this is the one that matters
+
+## Known accepted tradeoffs
+
+- **Twenty down, HubSpot up:** the visitor is told the submission failed even though HubSpot captured
+  the lead. The mirror is deferred via `after()`, so its outcome is unknown when the response is
+  written. Accepted to keep the response shape unchanged; a retry duplicates the HubSpot submission.
+- **Revocation is not instant.** The portal surface re-checks membership on every load, but the proxy
+  does not, so a removed member keeps non-portal session validity until the 8-hour TTL expires.
+- **A CRM outage does not lock out existing sessions.** `checkPortalAccess` treats "unavailable" as
+  access-continues, deliberately: it guards already-granted, cryptographically-bound, TTL-bounded
+  trust, unlike `findActiveWorkspaceMember`, which fails closed because it establishes trust.
+- **The magic-link timing fix is pinned by no test.** `after()` cannot run deferred under vitest, so
+  the tests would pass if the deferral were removed and the oracle reintroduced. Verified once by
+  hand against a running server.
