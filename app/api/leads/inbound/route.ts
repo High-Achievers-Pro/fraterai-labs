@@ -2,19 +2,28 @@ import { after, NextResponse, type NextRequest } from 'next/server';
 import { captureInboundLead, type InboundLead } from '@/lib/server/leads';
 import { mirrorToHubSpot } from '@/lib/server/hubspot-mirror';
 import { verifyTurnstileToken } from '@/lib/server/turnstile';
+// Relative, not '@/', import: vitest.config.ts has no '@/' alias configured
+// (only 'server-only' is stubbed there) — the other '@/lib/server/*'
+// imports above only resolve under test because every test that loads this
+// route mocks them by literal specifier via vi.mock, so real resolution is
+// never attempted. This constant has no mock, so it must resolve for real,
+// which the alias cannot do without editing vitest.config.ts (out of
+// scope for this task).
+import { HONEYPOT_FIELD_NAME, PAGE_URI_FIELD_NAME } from '../../../../lib/lead-form-fields';
 
 const EMAIL_SHAPE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const MAX_MESSAGE_LENGTH = 5000;
 
-// Exported so Task 9 (which builds the actual public form and posts to this
-// route) imports these rather than re-typing the field names — a typo or
-// drift between the two would either break the honeypot silently (a bot
-// filling the real field name would sail through) or lose the page context
-// HubSpot's mirror wants. `HONEYPOT_FIELD_NAME` names a hidden input a
-// genuine visitor never sees or fills; `PAGE_URI_FIELD_NAME` is optional —
-// this route falls back to the `Referer` header when the client omits it.
-export const HONEYPOT_FIELD_NAME = 'website';
-export const PAGE_URI_FIELD_NAME = 'pageUri';
+// Re-exported so Task 9 (the public contact form) can still import these
+// field names from one obvious place. They are defined in
+// lib/lead-form-fields.ts, not here, because that module is dependency-free
+// while this route transitively imports 'server-only' — importing straight
+// from this file would break `next build` for the Client Component form
+// (see lib/lead-form-fields.ts for the full explanation). Import them
+// rather than re-typing the strings — a typo or drift between the two would
+// either break the honeypot silently (a bot filling the real field name
+// would sail through) or lose the page context HubSpot's mirror wants.
+export { HONEYPOT_FIELD_NAME, PAGE_URI_FIELD_NAME };
 
 // request.json() has no compile-time guarantee about shape — it's parsed
 // from an untrusted request body — so each field is checked to actually be

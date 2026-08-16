@@ -3,9 +3,18 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import Script from 'next/script';
+import TurnstileWidget from '@/components/TurnstileWidget';
+// Imported from lib/lead-form-fields.ts, not the route handler itself: the
+// route transitively imports 'server-only' (via lib/server/leads.ts,
+// hubspot-mirror.ts, turnstile.ts), and Next.js refuses to bundle anything
+// that imports 'server-only' into a Client Component. The route re-exports
+// these same constants for anyone reading app/api/leads/inbound/route.ts,
+// but this file must import the dependency-free source directly.
+import { HONEYPOT_FIELD_NAME, PAGE_URI_FIELD_NAME } from '@/lib/lead-form-fields';
 
 export default function Contact() {
   const [activeTab, setActiveTab] = useState<'form' | 'calendar'>('form');
+  const [turnstileToken, setTurnstileToken] = useState('');
   const [buttonState, setButtonState] = useState({
     text: 'Send Message',
     disabled: false,
@@ -13,6 +22,8 @@ export default function Contact() {
     borderColor: '',
     backgroundColor: ''
   });
+
+  const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -23,28 +34,20 @@ export default function Contact() {
     const email = formData.get('email') || '';
     const company = formData.get('company') || '';
     const msg = formData.get('message') || '';
-
-    // Split name into firstname and lastname to match HubSpot default properties
-    const nameParts = (name as string).trim().split(' ');
-    const firstname = nameParts[0];
-    const lastname = nameParts.length > 1 ? nameParts.slice(1).join(' ') : '';
+    const website = formData.get(HONEYPOT_FIELD_NAME) || '';
 
     const payload = {
-      fields: [
-        { name: 'email', value: email },
-        { name: 'firstname', value: firstname },
-        { name: 'lastname', value: lastname },
-        { name: 'company', value: company },
-        { name: 'message', value: msg }
-      ],
-      context: {
-        pageUri: window.location.href,
-        pageName: document.title
-      }
+      name,
+      email,
+      company,
+      message: msg,
+      [HONEYPOT_FIELD_NAME]: website,
+      [PAGE_URI_FIELD_NAME]: window.location.href,
+      turnstileToken,
     };
 
     try {
-      const response = await fetch('https://api.hsforms.com/submissions/v3/integration/submit/245673738/7aaf12d7-5cc8-43a9-91ce-2fcb0961ab4c', {
+      const response = await fetch('/api/leads/inbound', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
@@ -131,13 +134,29 @@ export default function Contact() {
                 </div>
                 <div className="form-group">
                   <label htmlFor="company">Company</label>
-                  <input type="text" id="company" name="company" placeholder="Acme Corp" />
+                  <input type="text" id="company" name="company" placeholder="Acme Corp" required />
                 </div>
                 <div className="form-group">
                   <label htmlFor="message">How can we help?</label>
                   <textarea id="message" name="message" rows={5} placeholder="Tell us about your context and goals..." required></textarea>
                 </div>
-                <button 
+                <div
+                  aria-hidden="true"
+                  style={{ position: 'absolute', left: '-9999px', top: 'auto', width: '1px', height: '1px', overflow: 'hidden' }}
+                >
+                  <input
+                    type="text"
+                    name={HONEYPOT_FIELD_NAME}
+                    tabIndex={-1}
+                    autoComplete="off"
+                  />
+                </div>
+                {siteKey && (
+                  <div style={{ margin: '1rem 0' }}>
+                    <TurnstileWidget siteKey={siteKey} onVerify={setTurnstileToken} onExpire={() => setTurnstileToken('')} />
+                  </div>
+                )}
+                <button
                   type="submit" 
                   disabled={buttonState.disabled}
                   className="btn btn-primary btn-block" 
