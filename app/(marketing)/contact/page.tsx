@@ -23,9 +23,12 @@ export default function Contact() {
   // who fixes a validation error and retries (or retries after a
   // transient 500) resubmits the same, already-consumed token and gets
   // "Verification failed" instead of the real, now-corrected outcome —
-  // with no recovery short of a full page reload. Every failure branch
-  // below clears turnstileToken and calls turnstileRef.current?.reset()
-  // so a retry gets a fresh token.
+  // with no recovery short of a full page reload. The same is true after
+  // a *successful* submission: nothing else clears this state, so a second
+  // inquiry sent in the same page load would reuse the first one's spent
+  // token. Every branch below (success, non-ok response, and network
+  // error) clears turnstileToken and calls turnstileRef.current?.reset()
+  // so whatever the visitor does next gets a fresh token.
   const turnstileRef = useRef<TurnstileWidgetHandle>(null);
   const [buttonState, setButtonState] = useState({
     text: 'Send Message',
@@ -66,6 +69,22 @@ export default function Contact() {
       });
 
       if (response.ok) {
+        // This branch is reached identically for a genuine success and for
+        // a filled honeypot (route.ts returns a byte-identical 200 for
+        // both, by design — see HONEYPOT_FIELD_NAME's usage there). The
+        // client cannot and must not try to tell them apart, so this reset
+        // is unconditional here, exactly like the failure branches below,
+        // rather than gated on anything that would create an observable
+        // difference between a caught bot and a real success.
+        //
+        // The token is single-use regardless of which case this was. Left
+        // uncleared, a visitor who sends one inquiry and then sends a
+        // second in the same page load (without a reload) would resubmit
+        // the already-consumed token and get "Verification failed" on a
+        // legitimate second message — same mechanism as the failure-path
+        // bug, just reached from the success side.
+        setTurnstileToken('');
+        turnstileRef.current?.reset();
         setButtonState({
           text: '✓ Message Sent! We will get in touch soon.',
           disabled: false,
