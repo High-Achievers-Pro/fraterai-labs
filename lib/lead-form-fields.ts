@@ -12,6 +12,10 @@
 //
 // `HONEYPOT_FIELD_NAME` names a hidden input a genuine visitor never sees or
 // fills; `PAGE_URI_FIELD_NAME` is optional — the route falls back to the
-// `Referer` header when the client omits it.
+// `Referer` header when the client omits it. `TURNSTILE_TOKEN_FIELD_NAME`
+// is the body key the route reads the Cloudflare Turnstile client token
+// from — pinned here too so it isn't typed by hand in both the form and
+// the route, which is exactly the drift this module exists to prevent.
 export const HONEYPOT_FIELD_NAME = 'website';
 export const PAGE_URI_FIELD_NAME = 'pageUri';
+export const TURNSTILE_TOKEN_FIELD_NAME = 'turnstileToken';

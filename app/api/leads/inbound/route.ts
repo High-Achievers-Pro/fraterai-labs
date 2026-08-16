@@ -9,7 +9,11 @@ import { verifyTurnstileToken } from '@/lib/server/turnstile';
 // never attempted. This constant has no mock, so it must resolve for real,
 // which the alias cannot do without editing vitest.config.ts (out of
 // scope for this task).
-import { HONEYPOT_FIELD_NAME, PAGE_URI_FIELD_NAME } from '../../../../lib/lead-form-fields';
+import {
+  HONEYPOT_FIELD_NAME,
+  PAGE_URI_FIELD_NAME,
+  TURNSTILE_TOKEN_FIELD_NAME,
+} from '../../../../lib/lead-form-fields';
 
 const EMAIL_SHAPE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const MAX_MESSAGE_LENGTH = 5000;
@@ -23,7 +27,7 @@ const MAX_MESSAGE_LENGTH = 5000;
 // rather than re-typing the strings — a typo or drift between the two would
 // either break the honeypot silently (a bot filling the real field name
 // would sail through) or lose the page context HubSpot's mirror wants.
-export { HONEYPOT_FIELD_NAME, PAGE_URI_FIELD_NAME };
+export { HONEYPOT_FIELD_NAME, PAGE_URI_FIELD_NAME, TURNSTILE_TOKEN_FIELD_NAME };
 
 // request.json() has no compile-time guarantee about shape — it's parsed
 // from an untrusted request body — so each field is checked to actually be
@@ -54,7 +58,7 @@ export const POST = async (request: NextRequest) => {
   // honeypot check, before the field validation, before the Twenty lookups
   // and creates, and certainly before the HubSpot mirror. Mirrors the
   // ordering in app/api/auth/magic-link/request/route.ts.
-  const turnstileToken = readStringField(body, 'turnstileToken');
+  const turnstileToken = readStringField(body, TURNSTILE_TOKEN_FIELD_NAME);
   const remoteIp = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim();
   const turnstileOk = await verifyTurnstileToken(turnstileToken, remoteIp);
   if (!turnstileOk) return badRequest('Verification failed.');
@@ -70,10 +74,15 @@ export const POST = async (request: NextRequest) => {
 
   const name = readStringField(body, 'name')?.trim();
   const email = readStringField(body, 'email')?.trim();
-  const company = readStringField(body, 'company')?.trim();
+  // Company is optional on the public form — task 9 restored this; the
+  // pre-existing HubSpot form never required it either, and the brief
+  // says this task changes only where the data goes, not what the form
+  // demands of a visitor. Defaulted to '' (never undefined) so downstream
+  // code always has a string to work with.
+  const rawCompany = readStringField(body, 'company')?.trim() ?? '';
   const message = readStringField(body, 'message');
 
-  if (!name || !email || !company || !message) {
+  if (!name || !email || !message) {
     return badRequest('All fields are required.');
   }
   if (!EMAIL_SHAPE.test(email)) {
@@ -82,6 +91,25 @@ export const POST = async (request: NextRequest) => {
   if (message.length >= MAX_MESSAGE_LENGTH) {
     return badRequest('Message is too long.');
   }
+
+  // captureInboundLead's findOrCreateCompany (lib/server/leads.ts) still
+  // needs *some* name for a first-time domain: passing through '' would
+  // create a genuinely nameless Company record in Twenty, which shows
+  // blank in every list, search, and report in the CRM — bad data that
+  // outlives this one submission. Fall back to the verified email's
+  // domain, which is already the identity key findOrCreateCompany uses to
+  // de-duplicate by domain (see domainFromEmail there), so this is a
+  // legible placeholder ("acme.com"), not blank. EMAIL_SHAPE already
+  // guarantees an '@' followed by a non-empty domain at this point, so the
+  // split is safe without an extra fallback.
+  //
+  // Known limitation, not fixed here: findOrCreateCompany's lookup-then-
+  // create never updates an existing record's name, so if this domain's
+  // first-ever submission has no company name, the domain-derived
+  // placeholder sticks even after a later submission from the same domain
+  // supplies a real one. Pre-existing behavior of that lookup — out of
+  // scope for this task, which only decides what to pass in.
+  const company = rawCompany || email.split('@')[1].toLowerCase();
 
   const lead: InboundLead = { name, email, company, message };
   const pageUri = readStringField(body, PAGE_URI_FIELD_NAME) ?? request.headers.get('referer') ?? '';

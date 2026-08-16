@@ -1,20 +1,32 @@
 "use client";
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import Link from 'next/link';
 import Script from 'next/script';
-import TurnstileWidget from '@/components/TurnstileWidget';
+import TurnstileWidget, { type TurnstileWidgetHandle } from '@/components/TurnstileWidget';
 // Imported from lib/lead-form-fields.ts, not the route handler itself: the
 // route transitively imports 'server-only' (via lib/server/leads.ts,
 // hubspot-mirror.ts, turnstile.ts), and Next.js refuses to bundle anything
 // that imports 'server-only' into a Client Component. The route re-exports
 // these same constants for anyone reading app/api/leads/inbound/route.ts,
 // but this file must import the dependency-free source directly.
-import { HONEYPOT_FIELD_NAME, PAGE_URI_FIELD_NAME } from '@/lib/lead-form-fields';
+import {
+  HONEYPOT_FIELD_NAME,
+  PAGE_URI_FIELD_NAME,
+  TURNSTILE_TOKEN_FIELD_NAME,
+} from '@/lib/lead-form-fields';
 
 export default function Contact() {
   const [activeTab, setActiveTab] = useState<'form' | 'calendar'>('form');
   const [turnstileToken, setTurnstileToken] = useState('');
+  // Cloudflare siteverify tokens are single-use. Without this, a visitor
+  // who fixes a validation error and retries (or retries after a
+  // transient 500) resubmits the same, already-consumed token and gets
+  // "Verification failed" instead of the real, now-corrected outcome —
+  // with no recovery short of a full page reload. Every failure branch
+  // below clears turnstileToken and calls turnstileRef.current?.reset()
+  // so a retry gets a fresh token.
+  const turnstileRef = useRef<TurnstileWidgetHandle>(null);
   const [buttonState, setButtonState] = useState({
     text: 'Send Message',
     disabled: false,
@@ -43,7 +55,7 @@ export default function Contact() {
       message: msg,
       [HONEYPOT_FIELD_NAME]: website,
       [PAGE_URI_FIELD_NAME]: window.location.href,
-      turnstileToken,
+      [TURNSTILE_TOKEN_FIELD_NAME]: turnstileToken,
     };
 
     try {
@@ -63,6 +75,13 @@ export default function Contact() {
         });
         (e.target as HTMLFormElement).reset();
       } else {
+        // The Turnstile token the route just rejected (or ignored on the
+        // way to a 500) is single-use and already consumed. Clearing it
+        // and resetting the widget means the retry this error state
+        // invites actually gets a fresh token instead of repeating the
+        // same "Verification failed" regardless of what the visitor fixes.
+        setTurnstileToken('');
+        turnstileRef.current?.reset();
         setButtonState({
           text: 'Error submitting form. Please try again.',
           disabled: false,
@@ -72,6 +91,12 @@ export default function Contact() {
         });
       }
     } catch (error) {
+      // Same reasoning as the non-ok branch above: a request that reached
+      // the network layer may still have reached and consumed the token
+      // at the server before the client-visible failure (e.g. the
+      // response failed to come back), so reset defensively here too.
+      setTurnstileToken('');
+      turnstileRef.current?.reset();
       setButtonState({
         ...buttonState,
         text: 'Network error sending message.',
@@ -134,7 +159,7 @@ export default function Contact() {
                 </div>
                 <div className="form-group">
                   <label htmlFor="company">Company</label>
-                  <input type="text" id="company" name="company" placeholder="Acme Corp" required />
+                  <input type="text" id="company" name="company" placeholder="Acme Corp" />
                 </div>
                 <div className="form-group">
                   <label htmlFor="message">How can we help?</label>
@@ -153,7 +178,7 @@ export default function Contact() {
                 </div>
                 {siteKey && (
                   <div style={{ margin: '1rem 0' }}>
-                    <TurnstileWidget siteKey={siteKey} onVerify={setTurnstileToken} onExpire={() => setTurnstileToken('')} />
+                    <TurnstileWidget ref={turnstileRef} siteKey={siteKey} onVerify={setTurnstileToken} onExpire={() => setTurnstileToken('')} />
                   </div>
                 )}
                 <button

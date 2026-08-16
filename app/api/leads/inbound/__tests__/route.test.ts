@@ -123,7 +123,6 @@ describe('POST /api/leads/inbound', () => {
   it.each([
     ['name', { ...validBody, name: undefined }],
     ['email', { ...validBody, email: undefined }],
-    ['company', { ...validBody, company: undefined }],
     ['message', { ...validBody, message: undefined }],
   ])('returns 400 when %s is missing, without calling Twenty', async (_field, body) => {
     const { POST } = await import('../route');
@@ -132,6 +131,46 @@ describe('POST /api/leads/inbound', () => {
 
     expect(res.status).toBe(400);
     expect(captureInboundLead).not.toHaveBeenCalled();
+  });
+
+  // Company is optional on the public form (task 9 review, round 1): the
+  // pre-existing HubSpot form never required it, so the route must not
+  // either. But captureInboundLead's findOrCreateCompany still needs some
+  // name for a first-time domain — an empty string would create a
+  // genuinely nameless Company record in Twenty. These two tests cover
+  // the fallback the route derives from the verified email's domain.
+  it('accepts a missing company and derives one from the email domain', async () => {
+    const { POST } = await import('../route');
+
+    const res = await POST(buildRequest({ ...validBody, company: undefined }));
+
+    expect(res.status).toBe(200);
+    expect(captureInboundLead).toHaveBeenCalledTimes(1);
+    expect(captureInboundLead).toHaveBeenCalledWith(
+      expect.objectContaining({ company: 'acme.test' }),
+    );
+  });
+
+  it('accepts a blank company and derives one from the email domain', async () => {
+    const { POST } = await import('../route');
+
+    const res = await POST(buildRequest({ ...validBody, company: '   ' }));
+
+    expect(res.status).toBe(200);
+    expect(captureInboundLead).toHaveBeenCalledWith(
+      expect.objectContaining({ company: 'acme.test' }),
+    );
+  });
+
+  it('keeps a real company name over the email-domain fallback when one is supplied', async () => {
+    const { POST } = await import('../route');
+
+    const res = await POST(buildRequest(validBody));
+
+    expect(res.status).toBe(200);
+    expect(captureInboundLead).toHaveBeenCalledWith(
+      expect.objectContaining({ company: 'Acme Corp' }),
+    );
   });
 
   it('returns 400 for a malformed email address', async () => {
