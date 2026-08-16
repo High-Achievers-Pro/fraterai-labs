@@ -38,9 +38,20 @@ export const GET = async (request: NextRequest) => {
   } catch (error) {
     // Logged (not silently swallowed) so an operator debugging "nobody can
     // sign in" has a signal to distinguish a Google-side failure from a
-    // Twenty outage from a bug here — see final-review.md I3. Never logs
-    // the authorization `code` or any token; only the caught error.
-    console.error('[auth/google] callback failed', error);
+    // Twenty outage from a bug here — see final-review.md I3.
+    //
+    // Deliberately logs only `error.message`, never the error object
+    // itself: `exchangeCodeForIdToken`/`verifyIdToken` (lib/server/
+    // google-oauth.ts) can throw a gaxios GaxiosError, whose `config` and
+    // `response` are own enumerable properties that `console.error`
+    // (via util.inspect) would print in full — including the single-use
+    // OAuth `code` from this request and the token-exchange request/
+    // response bodies. gaxios's own errorRedactor only strips
+    // `client_secret`/`grant_type`, not `code`, so logging the error
+    // object directly would leak a live, potentially still-redeemable
+    // authorization code into server logs on every token-exchange
+    // failure. `.message` carries none of that.
+    console.error('[auth/google] callback failed', error instanceof Error ? error.message : error);
     return NextResponse.redirect(new URL('/portal/login?error=sign_in_failed', request.url));
   }
 };

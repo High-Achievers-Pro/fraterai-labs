@@ -60,7 +60,7 @@ describe('GET /api/auth/google/callback — session cookie attributes', () => {
 // needs to be able to tell a Google-side failure apart from a Twenty
 // outage or a bug here.
 describe('GET /api/auth/google/callback — error logging (I3)', () => {
-  it('logs and redirects to sign_in_failed when the downstream flow throws', async () => {
+  it('logs the error message and redirects to sign_in_failed when the downstream flow throws', async () => {
     verifyIdToken.mockRejectedValueOnce(new Error('Google verification failed'));
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
     const { GET } = await import('../route');
@@ -69,7 +69,38 @@ describe('GET /api/auth/google/callback — error logging (I3)', () => {
 
     expect(res.status).toBe(307);
     expect(res.headers.get('location')).toContain('/portal/login?error=sign_in_failed');
-    expect(errorSpy).toHaveBeenCalledWith('[auth/google] callback failed', expect.any(Error));
+    expect(errorSpy).toHaveBeenCalledWith('[auth/google] callback failed', 'Google verification failed');
+    errorSpy.mockRestore();
+  });
+
+  // Regression guard: exchangeCodeForIdToken/verifyIdToken can throw a
+  // gaxios GaxiosError, whose `config`/`response` are own enumerable
+  // properties carrying the single-use OAuth authorization `code` and the
+  // full token-exchange request/response — none of which gaxios's own
+  // errorRedactor strips (it only redacts client_secret/grant_type).
+  // Logging the error OBJECT (not just its message) would have printed
+  // that code to server logs on every token-exchange failure. This
+  // reproduces that shape and asserts the logged call carries only the
+  // message string, never the sensitive fields.
+  it('never logs the authorization code or token-exchange request/response, even from a gaxios-shaped error', async () => {
+    class FakeGaxiosError extends Error {
+      config = {
+        data: { code: 'live-single-use-auth-code-xyz', client_secret: 'should-also-not-leak' },
+      };
+      response = {
+        data: { access_token: 'leaked-access-token-should-not-appear' },
+      };
+    }
+    verifyIdToken.mockRejectedValueOnce(new FakeGaxiosError('invalid_grant'));
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    const { GET } = await import('../route');
+
+    await GET(buildRequest());
+
+    expect(errorSpy).toHaveBeenCalledWith('[auth/google] callback failed', 'invalid_grant');
+    const loggedArgs = errorSpy.mock.calls.flat();
+    expect(JSON.stringify(loggedArgs)).not.toContain('live-single-use-auth-code-xyz');
+    expect(JSON.stringify(loggedArgs)).not.toContain('leaked-access-token-should-not-appear');
     errorSpy.mockRestore();
   });
 });

@@ -40,6 +40,27 @@ describe('getPortalSummary', () => {
     errorSpy.mockRestore();
   });
 
+  // Regression guard, prompted by the google/callback leak (I3 re-review):
+  // lib/server/twenty-client.ts's real TwentyError carries only `message`
+  // and a numeric `status` as own enumerable properties — no request
+  // config, headers, or the TWENTY_API_KEY, unlike gaxios's GaxiosError.
+  // Proves the logged error DOES carry status (so this isn't vacuous) but
+  // never anything resembling a bearer token or API key.
+  it('does not leak an error property beyond what the real TwentyError shape carries', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    class FakeTwentyError extends Error {
+      status = 401;
+    }
+    vi.mocked(twentyGraphQL).mockRejectedValue(new FakeTwentyError('Twenty GraphQL request failed with 401'));
+
+    await getPortalSummary();
+
+    const loggedArgs = errorSpy.mock.calls.flat();
+    expect(JSON.stringify(loggedArgs)).toContain('401');
+    expect(JSON.stringify(loggedArgs)).not.toMatch(/bearer|api[_-]?key/i);
+    errorSpy.mockRestore();
+  });
+
   it('paginates past the first page rather than silently under-counting byStage against totalCount', async () => {
     vi.mocked(twentyGraphQL)
       .mockResolvedValueOnce({
