@@ -1,5 +1,6 @@
 import 'server-only';
 import { createHmac } from 'node:crypto';
+import { constantTimeEqual } from './constant-time';
 import { optionalEnv } from './env';
 
 // ============================================================================
@@ -68,18 +69,13 @@ const parseTimestampSeconds = (timestamp: string): number | null => {
 // replayed in).
 const REPLAY_WINDOW_MS = 5 * 60 * 1000;
 
-// Constant-time string comparison — mirrors lib/server/session.ts exactly.
-// A length-only or early-exit check leaks the correct signature one byte at
-// a time through response timing; XOR-and-OR every character instead so
-// total comparison time never depends on *where* the first mismatch is.
-const constantTimeEqual = (a: string, b: string): boolean => {
-  if (a.length !== b.length) return false;
-  let mismatch = 0;
-  for (let i = 0; i < a.length; i += 1) {
-    mismatch |= a.charCodeAt(i) ^ b.charCodeAt(i);
-  }
-  return mismatch === 0;
-};
+// constantTimeEqual itself now lives in constant-time.ts, shared with the
+// session/magic-link token signatures (see final-review.md I5). This
+// module signs different bytes (a "<timestamp>.<raw body>" string) with a
+// different secret (TWENTY_WEBHOOK_SECRET, not SESSION_SECRET) and a
+// different digest encoding (hex, via node:crypto, not base64url via
+// crypto.subtle) — nothing about the *signing* is shared with signed-
+// token.ts, only the constant-time comparison at the end is common ground.
 
 /**
  * Verifies a Twenty webhook signature against `TWENTY_WEBHOOK_SECRET`.

@@ -1,17 +1,12 @@
 import 'server-only';
-import { optionalEnv, requireEnv } from './env';
+import { requireEnv } from './env';
+import { parseAllowlist } from './allowlist';
 import type { GoogleIdentity } from './google-oauth';
 import type { WorkspaceMember } from './membership';
 
 export type AccessDecision =
   | { allowed: true; member: WorkspaceMember }
   | { allowed: false; reason: string };
-
-const parseAllowlist = (): string[] =>
-  (optionalEnv('PORTAL_EMAIL_ALLOWLIST') ?? '')
-    .split(',')
-    .map((entry) => entry.trim().toLowerCase())
-    .filter(Boolean);
 
 export const evaluateAccess = (
   identity: GoogleIdentity,
@@ -22,9 +17,15 @@ export const evaluateAccess = (
 
   if (!identity.emailVerified) return { allowed: false, reason: 'Email is not verified' };
 
+  // slice(lastIndexOf('@') + 1), not split('@')[1]: the latter takes the
+  // segment after the FIRST '@', so "a@fraterailabs.com@evil.com" would
+  // read as domain "fraterailabs.com" instead of the real, malformed
+  // domain. Not exploitable as traced (Google won't issue such an email
+  // claim, and this path also requires the hd claim to match), but this is
+  // the auth boundary and the correct derivation costs nothing.
   const isDomainMember =
     identity.hostedDomain?.toLowerCase() === domain &&
-    email.split('@')[1] === domain;
+    email.slice(email.lastIndexOf('@') + 1) === domain;
 
   const isAllowlisted = parseAllowlist().includes(email);
 
