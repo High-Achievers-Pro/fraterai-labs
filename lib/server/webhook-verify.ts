@@ -35,6 +35,10 @@ import { optionalEnv } from './env';
 // Header names Twenty is assumed to send:
 export const SIGNATURE_HEADER = 'x-twenty-signature';
 export const TIMESTAMP_HEADER = 'x-twenty-timestamp';
+// Hash algorithm assumed for the HMAC. Real webhook providers vary here —
+// SHA-1 and SHA-512 both see real use alongside SHA-256 — so this is a
+// guess like everything else in this block, not a safe default.
+const HMAC_ALGORITHM = 'sha256';
 // Digest encoding of the signature header's value: assumed hex, not base64.
 const DIGEST_ENCODING = 'hex' as const;
 // Assumed there is no "sha256=" (or similar) prefix on the signature value
@@ -103,7 +107,7 @@ export const verifyWebhookSignature = (
   const ageMs = Date.now() - timestampSeconds * 1000;
   if (Math.abs(ageMs) > REPLAY_WINDOW_MS) return false;
 
-  const expected = createHmac('sha256', secret)
+  const expected = createHmac(HMAC_ALGORITHM, secret)
     .update(buildSignedPayload(timestamp, rawBody))
     .digest(DIGEST_ENCODING);
 

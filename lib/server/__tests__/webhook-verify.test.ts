@@ -5,12 +5,20 @@ import { verifyWebhookSignature } from '../webhook-verify';
 const SECRET = 'test-webhook-secret';
 
 // Mirrors the ASSUMED-AND-UNVERIFIED scheme documented at the top of
-// ../webhook-verify.ts: HMAC-SHA256 of "<unix-seconds-timestamp>.<raw body>",
-// hex-encoded, no prefix. These tests exercise that self-consistent scheme
-// end to end (constant-time compare, replay window, raw-body handling) —
-// they cannot and do not prove the scheme matches what a real Twenty
-// instance sends, because Step 1 (capturing a real payload) could not be
-// performed. See task-10-report.md.
+// ../webhook-verify.ts: HMAC-SHA256 (the module's private HMAC_ALGORITHM
+// constant) of "<unix-seconds-timestamp>.<raw body>", hex-encoded (the
+// module's DIGEST_ENCODING), no prefix. These tests exercise that
+// self-consistent scheme end to end (constant-time compare, replay window,
+// raw-body handling) — they cannot and do not prove the scheme matches
+// what a real Twenty instance sends, because Step 1 (capturing a real
+// payload) could not be performed. See task-10-report.md.
+//
+// The 'sha256' / 'hex' literals below are necessarily hand-duplicated, not
+// imported — the module intentionally keeps HMAC_ALGORITHM and
+// DIGEST_ENCODING private. If either changes when the real scheme is
+// confirmed, these two literals must be updated to match or every test
+// below will fail (which is the point: a silent mismatch here would make
+// the tests validate a scheme the implementation no longer uses).
 const sign = (timestampSeconds: string, rawBody: string, secret = SECRET): string =>
   createHmac('sha256', secret).update(`${timestampSeconds}.${rawBody}`).digest('hex');
 
