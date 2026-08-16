@@ -54,3 +54,22 @@ describe('GET /api/auth/google/callback — session cookie attributes', () => {
     expect(cookie?.domain).toBeUndefined();
   });
 });
+
+// I3: the catch-all around the OAuth exchange previously swallowed every
+// failure with zero signal. An operator debugging "nobody can sign in"
+// needs to be able to tell a Google-side failure apart from a Twenty
+// outage or a bug here.
+describe('GET /api/auth/google/callback — error logging (I3)', () => {
+  it('logs and redirects to sign_in_failed when the downstream flow throws', async () => {
+    verifyIdToken.mockRejectedValueOnce(new Error('Google verification failed'));
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    const { GET } = await import('../route');
+
+    const res = await GET(buildRequest());
+
+    expect(res.status).toBe(307);
+    expect(res.headers.get('location')).toContain('/portal/login?error=sign_in_failed');
+    expect(errorSpy).toHaveBeenCalledWith('[auth/google] callback failed', expect.any(Error));
+    errorSpy.mockRestore();
+  });
+});

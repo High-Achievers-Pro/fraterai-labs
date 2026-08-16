@@ -36,7 +36,13 @@ export const verifyTurnstileToken = async (
 
     const payload = (await response.json()) as { success?: boolean };
     return payload.success === true;
-  } catch {
+  } catch (error) {
+    // Logged (not silently swallowed) so a network failure talking to
+    // Cloudflare is distinguishable from a genuine failed challenge or a
+    // misconfigured secret — see final-review.md I3. Never logs `token` or
+    // `secret`: only the caught error, which is a fetch/JSON failure, not
+    // request data.
+    console.error('[turnstile] siteverify request failed', error);
     return false;
   }
 };

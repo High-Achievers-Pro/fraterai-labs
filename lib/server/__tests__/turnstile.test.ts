@@ -51,8 +51,23 @@ describe('verifyTurnstileToken', () => {
   it('returns false when fetch rejects', async () => {
     process.env.TURNSTILE_SECRET_KEY = 'secret-key';
     vi.stubGlobal('fetch', vi.fn(async () => { throw new Error('network down'); }));
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
 
     expect(await verifyTurnstileToken('a-token')).toBe(false);
+    errorSpy.mockRestore();
+  });
+
+  // I3: a network failure talking to Cloudflare must leave a signal an
+  // operator can distinguish from a genuine failed challenge.
+  it('logs when fetch rejects', async () => {
+    process.env.TURNSTILE_SECRET_KEY = 'secret-key';
+    vi.stubGlobal('fetch', vi.fn(async () => { throw new Error('network down'); }));
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+    await verifyTurnstileToken('a-token');
+
+    expect(errorSpy).toHaveBeenCalledWith('[turnstile] siteverify request failed', expect.any(Error));
+    errorSpy.mockRestore();
   });
 
   it('returns false on a non-2xx response', async () => {
@@ -69,8 +84,10 @@ describe('verifyTurnstileToken', () => {
       status: 200,
       json: async () => { throw new SyntaxError('Unexpected token in JSON'); },
     })));
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
 
     expect(await verifyTurnstileToken('a-token')).toBe(false);
+    errorSpy.mockRestore();
   });
 
   it('sends the secret key and token in the request body', async () => {
@@ -117,9 +134,15 @@ describe('verifyTurnstileToken', () => {
   it('never leaks the secret key in a thrown error or return value', async () => {
     process.env.TURNSTILE_SECRET_KEY = 'super-secret-value';
     vi.stubGlobal('fetch', vi.fn(async () => { throw new Error('network down'); }));
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
 
     const result = await verifyTurnstileToken('a-token').catch((e) => e);
     expect(JSON.stringify(result)).not.toContain('super-secret-value');
     expect(String(result)).not.toContain('super-secret-value');
+    // The I3 log line itself must not leak the secret either.
+    expect(errorSpy).toHaveBeenCalledWith('[turnstile] siteverify request failed', expect.any(Error));
+    const loggedArgs = errorSpy.mock.calls.flat();
+    expect(JSON.stringify(loggedArgs)).not.toContain('super-secret-value');
+    errorSpy.mockRestore();
   });
 });

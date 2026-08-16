@@ -142,10 +142,14 @@ export const getPortalSummary = async (): Promise<PortalSummary> => {
     // loop exists to prevent — so this is a hard failure instead, caught
     // below and reported as `unavailable`.
     throw new Error(`Prospect pagination did not complete within ${MAX_PROSPECT_PAGES} pages`);
-  } catch {
+  } catch (error) {
     // Fail closed to a visibly "unavailable" state rather than letting a
     // CRM outage (or a bad query, or non-terminating pagination) take down
-    // the whole portal page or show data known to be incomplete.
+    // the whole portal page or show data known to be incomplete. Logged
+    // (not silently swallowed) so an operator can tell a CRM outage apart
+    // from a broken query or a runaway-pagination bug — see
+    // final-review.md I3.
+    console.error('[summary] failed to load portal summary', error);
     return UNAVAILABLE_SUMMARY;
   }
 };

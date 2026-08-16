@@ -28,9 +28,16 @@ describe('getPortalSummary', () => {
 
   it('reports zeroes rather than throwing when Twenty is unreachable', async () => {
     vi.mocked(twentyGraphQL).mockRejectedValue(new Error('down'));
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
     const summary = await getPortalSummary();
     expect(summary.totalProspects).toBe(0);
     expect(summary.unavailable).toBe(true);
+
+    // I3: an operator debugging "the portal shows no data" needs a signal
+    // distinguishing a CRM outage from a broken query.
+    expect(errorSpy).toHaveBeenCalledWith('[summary] failed to load portal summary', expect.any(Error));
+    errorSpy.mockRestore();
   });
 
   it('paginates past the first page rather than silently under-counting byStage against totalCount', async () => {
@@ -71,8 +78,10 @@ describe('getPortalSummary', () => {
       },
       outreaches: { totalCount: 0 },
     } as never);
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
 
     const summary = await getPortalSummary();
+    errorSpy.mockRestore();
 
     expect(summary.unavailable).toBe(true);
     expect(summary.totalProspects).toBe(0);

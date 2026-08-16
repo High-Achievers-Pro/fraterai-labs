@@ -104,11 +104,15 @@ describe('GET /api/auth/magic-link/verify', () => {
   it('redirects to link_invalid without setting a cookie when a downstream call throws unexpectedly', async () => {
     const { GET } = await import('../route');
     readMagicToken.mockRejectedValueOnce(new Error('boom'));
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
 
     const res = await GET(buildRequest('?token=abc.def'));
 
     expect(createSessionCookie).not.toHaveBeenCalled();
     expect(res.headers.get('location')).toContain('/portal/login?error=link_invalid');
     expect(res.cookies.get('__Host-frater_portal_session')).toBeUndefined();
+    // I3: an operator debugging "nobody can sign in" needs a signal here too.
+    expect(errorSpy).toHaveBeenCalledWith('[auth/magic-link] verification failed', expect.any(Error));
+    errorSpy.mockRestore();
   });
 });
