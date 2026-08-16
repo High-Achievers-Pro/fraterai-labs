@@ -11,16 +11,17 @@ vi.mock('@/lib/server/membership', () => ({
   findActiveWorkspaceMember: (...args: unknown[]) => findActiveWorkspaceMember(...args),
 }));
 
-// Fully mocked (not via importOriginal) because the `@/` path alias is only
-// configured for tsconfig/Next's bundler, not vitest's resolver — a real
-// resolution of '@/lib/server/session' fails under vitest. SESSION_COOKIE_NAME
-// is hardcoded here to its real value (lib/server/session.ts) rather than
-// imported, so this still asserts against the actual cookie name.
+// Partially mocked via importOriginal: SESSION_COOKIE_NAME and
+// SESSION_TTL_SECONDS come from the real module (so this test can't drift
+// from the actual constants), only createSessionCookie itself is replaced.
 const createSessionCookie = vi.fn();
-vi.mock('@/lib/server/session', () => ({
-  SESSION_COOKIE_NAME: '__Host-frater_portal_session',
-  createSessionCookie: (...args: unknown[]) => createSessionCookie(...args),
-}));
+vi.mock('@/lib/server/session', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/server/session')>();
+  return {
+    ...actual,
+    createSessionCookie: (...args: unknown[]) => createSessionCookie(...args),
+  };
+});
 
 const buildRequest = (search: string) =>
   new NextRequest(`http://portal.fraterailabs.com/api/auth/magic-link/verify${search}`);

@@ -2,9 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { evaluateAccess } from '@/lib/server/auth-gate';
 import { exchangeCodeForIdToken, verifyIdToken } from '@/lib/server/google-oauth';
 import { findActiveWorkspaceMember } from '@/lib/server/membership';
-import { SESSION_COOKIE_NAME, createSessionCookie } from '@/lib/server/session';
-
-const SESSION_TTL_SECONDS = 8 * 60 * 60;
+import { SESSION_COOKIE_NAME, SESSION_TTL_SECONDS, createSessionCookie } from '@/lib/server/session';
 
 export const GET = async (request: NextRequest) => {
   const url = new URL(request.url);

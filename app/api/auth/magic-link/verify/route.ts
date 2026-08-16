@@ -1,10 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { readMagicToken } from '@/lib/server/magic-link';
 import { findActiveWorkspaceMember } from '@/lib/server/membership';
-import { SESSION_COOKIE_NAME, createSessionCookie } from '@/lib/server/session';
-
-// Matches the Google-callback session lifetime (app/api/auth/google/callback/route.ts).
-const SESSION_TTL_SECONDS = 8 * 60 * 60;
+import { SESSION_COOKIE_NAME, SESSION_TTL_SECONDS, createSessionCookie } from '@/lib/server/session';
 
 const invalidLinkRedirect = (request: NextRequest) =>
   NextResponse.redirect(new URL('/portal/login?error=link_invalid', request.url));
@@ -20,9 +17,17 @@ export const GET = async (request: NextRequest) => {
     const payload = await readMagicToken(token ?? undefined);
     if (!payload) return invalidLinkRedirect(request);
 
-    // Re-query membership at redemption time (not the membership at request
-    // time) — this is what makes revocation immediate. Removing someone from
-    // the Twenty workspace after the link was emailed still blocks them here.
+    // Re-query membership at redemption time (not the membership when the
+    // link was requested) so someone removed from the Twenty workspace
+    // between requesting the link and clicking it is blocked here. This
+    // does NOT make revocation immediate for the life of the session that
+    // gets minted below — nothing revisits Twenty again until the session
+    // expires (SESSION_TTL_SECONDS, up to 8 hours) unless something else
+    // re-checks. That something else is the portal surface itself
+    // (lib/server/portal-access.ts, used by the portal page and
+    // app/api/portal/*), which re-checks membership on every request —
+    // see final-review.md I1 for why this comment previously overclaimed
+    // "immediate" and what closes the gap.
     const member = await findActiveWorkspaceMember(payload.email);
     if (!member) return invalidLinkRedirect(request);
 
@@ -36,7 +41,8 @@ export const GET = async (request: NextRequest) => {
       httpOnly: true, secure: true, sameSite: 'lax', path: '/', maxAge: SESSION_TTL_SECONDS,
     });
     return response;
-  } catch {
+  } catch (error) {
+    console.error('[auth/magic-link] verification failed', error);
     return invalidLinkRedirect(request);
   }
 };

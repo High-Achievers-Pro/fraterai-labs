@@ -12,6 +12,20 @@ import { signPayload, verifyAndParse } from './signed-token';
 // after launch. See final-review.md I4.
 export const SESSION_COOKIE_NAME = '__Host-frater_portal_session';
 
+// Previously declared twice, identically, in both mint sites
+// (app/api/auth/google/callback/route.ts and app/api/auth/magic-link/
+// verify/route.ts) — hoisted here so there is exactly one number to change
+// if the session lifetime is ever revisited. See final-review.md I1.
+//
+// This TTL is also the outer bound on how stale a session's membership
+// check can be: readSessionCookie/proxy.ts never re-consult Twenty, so a
+// member removed from the workspace keeps portal access for up to this
+// long unless something else re-checks membership sooner. The portal
+// surface (lib/server/portal-access.ts) does exactly that on every
+// request, which is what makes revocation effectively immediate in
+// practice rather than bounded by this TTL — see that module's comment.
+export const SESSION_TTL_SECONDS = 8 * 60 * 60;
+
 export type SessionPayload = {
   email: string;
   name: string;

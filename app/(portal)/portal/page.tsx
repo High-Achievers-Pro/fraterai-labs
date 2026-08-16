@@ -1,14 +1,29 @@
 import { cookies } from 'next/headers';
-import { SESSION_COOKIE_NAME, readSessionCookie } from '@/lib/server/session';
+import { redirect } from 'next/navigation';
+import { SESSION_COOKIE_NAME } from '@/lib/server/session';
+import { checkPortalAccess } from '@/lib/server/portal-access';
 import { getPortalSummary } from '@/lib/server/summary';
 
 export default async function PortalPage() {
-  // proxy.ts already gates this route — an unauthenticated request never
-  // reaches this component. Session is re-read here (not passed via headers)
-  // purely to get the member's name/email for the greeting.
+  // proxy.ts already gates this route on a validly-signed, unexpired
+  // session cookie — an unauthenticated request never reaches this
+  // component. checkPortalAccess additionally re-confirms the session's
+  // member is STILL an active Twenty workspace member (proxy.ts and the
+  // cookie alone can't catch someone removed mid-session — see
+  // final-review.md I1). `denied` here means Twenty was reachable and said
+  // no; `unavailable` means Twenty couldn't be reached at all, in which
+  // case access proceeds on the trust already established at sign-in
+  // (see lib/server/portal-access.ts for the full reasoning) — the summary
+  // fetch below will show its own "unavailable" state for the same outage.
   const cookieStore = await cookies();
-  const session = await readSessionCookie(cookieStore.get(SESSION_COOKIE_NAME)?.value);
-  const name = session?.name || session?.email || 'there';
+  const access = await checkPortalAccess(cookieStore.get(SESSION_COOKIE_NAME)?.value);
+
+  if (access.status === 'denied') {
+    redirect('/portal/login?error=not_authorized');
+  }
+
+  const { session } = access;
+  const name = session.name || session.email || 'there';
 
   // Fetched directly here (not via a request to /api/portal/summary) — this
   // is already a server component, so calling our own HTTP endpoint would be
