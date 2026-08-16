@@ -2,18 +2,11 @@ import { after, NextResponse, type NextRequest } from 'next/server';
 import { captureInboundLead, type InboundLead } from '@/lib/server/leads';
 import { mirrorToHubSpot } from '@/lib/server/hubspot-mirror';
 import { verifyTurnstileToken } from '@/lib/server/turnstile';
-// Relative, not '@/', import: vitest.config.ts has no '@/' alias configured
-// (only 'server-only' is stubbed there) — the other '@/lib/server/*'
-// imports above only resolve under test because every test that loads this
-// route mocks them by literal specifier via vi.mock, so real resolution is
-// never attempted. This constant has no mock, so it must resolve for real,
-// which the alias cannot do without editing vitest.config.ts (out of
-// scope for this task).
 import {
   HONEYPOT_FIELD_NAME,
   PAGE_URI_FIELD_NAME,
   TURNSTILE_TOKEN_FIELD_NAME,
-} from '../../../../lib/lead-form-fields';
+} from '@/lib/lead-form-fields';
 
 const EMAIL_SHAPE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const MAX_MESSAGE_LENGTH = 5000;
@@ -45,6 +38,28 @@ const badRequest = (message: string) => NextResponse.json({ error: message }, { 
 // same status, same body — so nothing here tells a bot it was caught rather
 // than merely slow, offline, or blocked by something else entirely.
 const okResponse = () => NextResponse.json({ ok: true }, { status: 200 });
+
+// Schedules the HubSpot mirror via after() — required on a serverless
+// platform, since any promise still pending when the response is returned
+// is killed, so a bare un-awaited call would silently never complete (see
+// task-5b-report.md for the same fix on the magic-link path). Called from
+// BOTH the success path and the Twenty-capture-failed path below (see
+// final-review.md I2): before this branch, the contact form posted
+// straight to HubSpot, so a Twenty/Railway outage is not allowed to make
+// lead capture any less available than it was. mirrorToHubSpot already
+// swallows every failure inside its own try/catch by design; this wrapper
+// exists only to catch a *different* class of bug — a synchronous throw
+// before that try/catch is entered — so it can never surface as an
+// unhandled rejection.
+const scheduleHubSpotMirror = (lead: InboundLead, pageUri: string): void => {
+  after(async () => {
+    try {
+      await mirrorToHubSpot(lead, pageUri);
+    } catch (error) {
+      console.error('[leads] HubSpot mirror threw despite being designed not to (non-fatal)', error);
+    }
+  });
+};
 
 export const POST = async (request: NextRequest) => {
   let body: unknown;
@@ -121,6 +136,19 @@ export const POST = async (request: NextRequest) => {
     // name from the CRM) back to an anonymous caller — log it server-side
     // for whoever watches the logs, return a fixed generic message.
     console.error('[leads] failed to capture inbound lead', error);
+
+    // Twenty failing does not mean the lead is lost: schedule the HubSpot
+    // mirror here too (final-review.md I2). Before this branch the
+    // contact form posted straight to HubSpot, so a Twenty/Railway outage
+    // must degrade to that old behaviour, not drop the lead outright.
+    // Twenty stays authoritative for the RESPONSE the visitor sees — it
+    // still gets a 500, unchanged — because whether the deferred
+    // after()-scheduled mirror actually succeeds isn't known yet at
+    // response time. The message itself was already careful not to claim
+    // the lead was lost, only that something went wrong and to try again
+    // — true either way, and harmless to repeat if HubSpot already has it.
+    scheduleHubSpotMirror(lead, pageUri);
+
     return NextResponse.json(
       { error: 'Something went wrong. Please try again later.' },
       { status: 500 },
@@ -130,24 +158,7 @@ export const POST = async (request: NextRequest) => {
   // Twenty is authoritative and already has the record at this point — the
   // capture above was awaited and succeeded before this line runs, so a
   // HubSpot outage (or a bug inside the mirror itself) cannot cost a lead.
-  // after() — not a bare un-awaited call as the brief's prose put it — is
-  // required on a serverless platform: any promise still pending when the
-  // response is returned is killed, so a fire-and-forget call here would
-  // silently never complete. Same fix as deliverMagicLinkIfEligible in
-  // app/api/auth/magic-link/request/route.ts (see task-5b-report.md).
-  //
-  // mirrorToHubSpot already swallows every failure inside its own try/catch
-  // by design. This wrapper exists only to catch a *different* class of bug
-  // — a synchronous throw before that try/catch is entered — so it can never
-  // surface as an unhandled rejection. Either way the lead itself is safe:
-  // it was already written to Twenty above.
-  after(async () => {
-    try {
-      await mirrorToHubSpot(lead, pageUri);
-    } catch (error) {
-      console.error('[leads] HubSpot mirror threw despite being designed not to (non-fatal)', error);
-    }
-  });
+  scheduleHubSpotMirror(lead, pageUri);
 
   return okResponse();
 };

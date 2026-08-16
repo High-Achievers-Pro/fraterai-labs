@@ -212,8 +212,49 @@ describe('POST /api/leads/inbound', () => {
     expect(JSON.stringify(resBody)).not.toContain('bogus');
     expect(JSON.stringify(resBody)).not.toContain('secret-key-xyz');
     expect(resBody).toEqual({ error: 'Something went wrong. Please try again later.' });
-    // The mirror must never be scheduled for a lead that was never captured.
-    expect(capturedAfterCallbacks).toHaveLength(0);
+    errorSpy.mockRestore();
+  });
+
+  // I2: before this branch, the contact form posted straight to HubSpot, so
+  // a Twenty outage must not make lead capture any less available than it
+  // was. When captureInboundLead throws, the mirror is now scheduled via
+  // after() too — same deferral mechanism as the success path — so the
+  // lead still reaches HubSpot even though Twenty (the authoritative
+  // source) failed to record it. The response the visitor sees stays a
+  // 500, unchanged: whether the deferred mirror actually succeeds isn't
+  // known yet when the response is written.
+  it('still schedules the HubSpot mirror via after() when captureInboundLead throws (I2)', async () => {
+    const { POST } = await import('../route');
+    captureInboundLead.mockRejectedValueOnce(new Error('Twenty is down'));
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+    const res = await POST(buildRequest(validBody));
+
+    expect(res.status).toBe(500);
+    // Mirror not called inline — only scheduled — same deferral discipline
+    // as the success path.
+    expect(mirrorToHubSpot).not.toHaveBeenCalled();
+    expect(capturedAfterCallbacks).toHaveLength(1);
+
+    await capturedAfterCallbacks[0]?.();
+    expect(mirrorToHubSpot).toHaveBeenCalledTimes(1);
+    expect(mirrorToHubSpot).toHaveBeenCalledWith(
+      expect.objectContaining({ email: 'ada@acme.test' }),
+      expect.any(String),
+    );
+    errorSpy.mockRestore();
+  });
+
+  it('does not throw out of the scheduled callback when both Twenty and the mirror fail', async () => {
+    const { POST } = await import('../route');
+    captureInboundLead.mockRejectedValueOnce(new Error('Twenty is down'));
+    mirrorToHubSpot.mockRejectedValueOnce(new Error('HubSpot is also down'));
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+    const res = await POST(buildRequest(validBody));
+    expect(res.status).toBe(500);
+
+    await expect(capturedAfterCallbacks[0]?.()).resolves.toBeUndefined();
     errorSpy.mockRestore();
   });
 
