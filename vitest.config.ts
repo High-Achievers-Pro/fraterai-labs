@@ -12,11 +12,24 @@ import { fileURLToPath } from 'node:url';
 // if this module reaches a client bundle) still holds.
 const serverOnlyStub = fileURLToPath(new URL('./node_modules/server-only/empty.js', import.meta.url));
 
+// Mirrors tsconfig.json's "paths": { "@/*": ["./*"] }, which Next's bundler
+// and the TS language service already honor but vitest's own resolver
+// never has. Before this alias existed, every '@/lib/server/*' import in a
+// file under test had to be mocked by literal specifier (vi.mock('@/lib/
+// server/x', ...) with no importOriginal) even when a test wanted the REAL
+// module — see final-review.md I7 for the three concrete workarounds this
+// forced (duplicated header-name literals, two hand-reimplemented
+// requireEnv's, and a relative import three lines below sibling '@/'
+// imports in app/api/leads/inbound/route.ts) and docs/runbooks for none of
+// that being news to Tasks 9 and 10, which both flagged it independently.
+const repoRoot = fileURLToPath(new URL('./', import.meta.url));
+
 export default defineConfig({
   test: { environment: 'node', include: ['**/__tests__/**/*.test.ts'] },
   resolve: {
     alias: {
       'server-only': serverOnlyStub,
+      '@': repoRoot,
     },
   },
 });

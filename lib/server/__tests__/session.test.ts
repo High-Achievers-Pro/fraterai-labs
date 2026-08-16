@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { createMagicToken } from '../magic-link';
-import { createSessionCookie, readSessionCookie } from '../session';
+import { SESSION_COOKIE_NAME, createSessionCookie, readSessionCookie } from '../session';
 
 const payload = {
   email: 'someone@fraterailabs.com',
@@ -54,5 +54,11 @@ describe('session', () => {
   it('REFUSES a magic-link token presented as a session cookie', async () => {
     const token = await createMagicToken('someone@fraterailabs.com');
     expect(await readSessionCookie(token)).toBeNull();
+  });
+
+  // Pins I4: the __Host- prefix is what makes the browser enforce Secure,
+  // Path=/, and no Domain on this cookie. See session.ts's own comment.
+  it('carries the __Host- prefix', () => {
+    expect(SESSION_COOKIE_NAME.startsWith('__Host-')).toBe(true);
   });
 });

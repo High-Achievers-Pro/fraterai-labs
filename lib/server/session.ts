@@ -1,7 +1,16 @@
 import 'server-only';
 import { requireEnv } from './env';
 
-export const SESSION_COOKIE_NAME = 'frater_portal_session';
+// __Host- prefix: the browser enforces (not just documents) that a cookie
+// with this prefix must be Secure, must have Path=/, and must NOT set a
+// Domain attribute — all three already hold at both set sites
+// (app/api/auth/google/callback/route.ts, app/api/auth/magic-link/verify/
+// route.ts). Without it, a sibling subdomain of fraterailabs.com could set
+// its own Domain=fraterailabs.com cookie of the same name, which the
+// browser would then send here too (session fixation). Renamed while
+// nothing is deployed yet — free now, would log out every live session
+// after launch. See final-review.md I4.
+export const SESSION_COOKIE_NAME = '__Host-frater_portal_session';
 
 export type SessionPayload = {
   email: string;

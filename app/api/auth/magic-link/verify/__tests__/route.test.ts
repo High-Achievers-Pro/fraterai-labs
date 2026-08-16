@@ -18,7 +18,7 @@ vi.mock('@/lib/server/membership', () => ({
 // imported, so this still asserts against the actual cookie name.
 const createSessionCookie = vi.fn();
 vi.mock('@/lib/server/session', () => ({
-  SESSION_COOKIE_NAME: 'frater_portal_session',
+  SESSION_COOKIE_NAME: '__Host-frater_portal_session',
   createSessionCookie: (...args: unknown[]) => createSessionCookie(...args),
 }));
 
@@ -53,7 +53,7 @@ describe('GET /api/auth/magic-link/verify', () => {
     expect(res.status).toBe(307);
     expect(res.headers.get('location')).toContain('/portal');
     expect(res.headers.get('location')).not.toContain('/portal/login');
-    expect(res.cookies.get('frater_portal_session')?.value).toBe('cookie-body.cookie-sig');
+    expect(res.cookies.get('__Host-frater_portal_session')?.value).toBe('cookie-body.cookie-sig');
   });
 
   it('redirects to link_invalid without setting a cookie when the token itself is rejected', async () => {
@@ -65,7 +65,7 @@ describe('GET /api/auth/magic-link/verify', () => {
     expect(findActiveWorkspaceMember).not.toHaveBeenCalled();
     expect(createSessionCookie).not.toHaveBeenCalled();
     expect(res.headers.get('location')).toContain('/portal/login?error=link_invalid');
-    expect(res.cookies.get('frater_portal_session')).toBeUndefined();
+    expect(res.cookies.get('__Host-frater_portal_session')).toBeUndefined();
   });
 
   // The load-bearing case for immediate revocation: the token's own checks
@@ -82,7 +82,7 @@ describe('GET /api/auth/magic-link/verify', () => {
     expect(findActiveWorkspaceMember).toHaveBeenCalledWith('contractor@partner.test');
     expect(createSessionCookie).not.toHaveBeenCalled();
     expect(res.headers.get('location')).toContain('/portal/login?error=link_invalid');
-    expect(res.cookies.get('frater_portal_session')).toBeUndefined();
+    expect(res.cookies.get('__Host-frater_portal_session')).toBeUndefined();
   });
 
   it('redirects to link_invalid without setting a cookie when the token query param is missing', async () => {
@@ -108,6 +108,6 @@ describe('GET /api/auth/magic-link/verify', () => {
 
     expect(createSessionCookie).not.toHaveBeenCalled();
     expect(res.headers.get('location')).toContain('/portal/login?error=link_invalid');
-    expect(res.cookies.get('frater_portal_session')).toBeUndefined();
+    expect(res.cookies.get('__Host-frater_portal_session')).toBeUndefined();
   });
 });
