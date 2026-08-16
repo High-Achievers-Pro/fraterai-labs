@@ -213,3 +213,28 @@ dependencies above and both are pinned in `package-lock.json`.
 `vitest.config.ts` already includes `lib/server/__tests__/*.test.ts` via its
 `**/__tests__/**/*.test.ts` glob and runs with `environment: 'node'`. No
 change to `vitest.config.ts` was needed or made.
+
+## Task 10: Twenty's outbound webhook signature scheme — NOT observed, still assumed
+
+Task 10's Step 1 called for creating a test webhook in Twenty, inspecting the
+headers it actually sends, and recording the header names and signed-payload
+format here. That could not be done: Twenty's API keys were mid-rotation
+after a credential leak and no live instance was available, and a search of
+`twenty-app/node_modules/` and `docs/runbooks/twenty-railway.md` turned up no
+webhook-signing code, header names, or documented payload format anywhere in
+this repo (full search trail in `task-10-report.md`).
+
+**Nothing here is confirmed.** The receiver (`app/api/webhooks/twenty/route.ts`,
+`lib/server/webhook-verify.ts`) was built against a guessed, Stripe/Slack-style
+scheme, isolated in one clearly marked block at the top of
+`lib/server/webhook-verify.ts` so it can be corrected in one place once real
+traffic is observed. Getting it wrong fails closed (every delivery gets a 401),
+so shipping it unverified is safe — it just means the receiver silently
+rejects every real Twenty webhook until this is fixed.
+
+**When a live Twenty instance is available again:** create a test webhook
+(Settings → Webhooks) pointed at a request-capture endpoint (e.g.
+`https://webhook.site`), trigger an event, and update the ASSUMED block in
+`lib/server/webhook-verify.ts` (header names, signed-bytes format, digest
+encoding, any prefix) to match what's actually observed — then record the
+confirmed values in this section, replacing this note.
