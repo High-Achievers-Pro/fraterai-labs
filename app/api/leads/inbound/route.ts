@@ -6,6 +6,16 @@ import { verifyTurnstileToken } from '@/lib/server/turnstile';
 const EMAIL_SHAPE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const MAX_MESSAGE_LENGTH = 5000;
 
+// Exported so Task 9 (which builds the actual public form and posts to this
+// route) imports these rather than re-typing the field names — a typo or
+// drift between the two would either break the honeypot silently (a bot
+// filling the real field name would sail through) or lose the page context
+// HubSpot's mirror wants. `HONEYPOT_FIELD_NAME` names a hidden input a
+// genuine visitor never sees or fills; `PAGE_URI_FIELD_NAME` is optional —
+// this route falls back to the `Referer` header when the client omits it.
+export const HONEYPOT_FIELD_NAME = 'website';
+export const PAGE_URI_FIELD_NAME = 'pageUri';
+
 // request.json() has no compile-time guarantee about shape — it's parsed
 // from an untrusted request body — so each field is checked to actually be
 // a string before use rather than trusted from a destructure. Same house
@@ -40,13 +50,13 @@ export const POST = async (request: NextRequest) => {
   const turnstileOk = await verifyTurnstileToken(turnstileToken, remoteIp);
   if (!turnstileOk) return badRequest('Verification failed.');
 
-  // Honeypot: a hidden form field ("website") a genuine visitor never sees
-  // or fills in, wired up by the client the same way the magic-link and
-  // turnstile fields are. Any non-empty value here means an automated
-  // submission — return the identical success response and do no work,
-  // rather than a distinct status/body that would tell the bot it was
-  // caught (and invite it to adapt).
-  const honeypot = readStringField(body, 'website');
+  // Honeypot: a hidden form field a genuine visitor never sees or fills in,
+  // wired up by the client the same way the magic-link and turnstile fields
+  // are. Any non-empty value here means an automated submission — return
+  // the identical success response and do no work, rather than a distinct
+  // status/body that would tell the bot it was caught (and invite it to
+  // adapt).
+  const honeypot = readStringField(body, HONEYPOT_FIELD_NAME);
   if (honeypot) return okResponse();
 
   const name = readStringField(body, 'name')?.trim();
@@ -65,7 +75,7 @@ export const POST = async (request: NextRequest) => {
   }
 
   const lead: InboundLead = { name, email, company, message };
-  const pageUri = readStringField(body, 'pageUri') ?? request.headers.get('referer') ?? '';
+  const pageUri = readStringField(body, PAGE_URI_FIELD_NAME) ?? request.headers.get('referer') ?? '';
 
   try {
     await captureInboundLead(lead);

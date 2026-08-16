@@ -36,7 +36,57 @@ const splitFullName = (raw: string): { firstName: string; lastName: string } => 
 // company rather than drifting apart from its own filter.
 const domainFromEmail = (email: string): string => email.trim().toLowerCase().split('@')[1] ?? '';
 
-const encodeFilter = (filter: string): string => encodeURIComponent(filter);
+// Twenty's REST filter grammar treats a literal comma as the top-level AND
+// separator between clauses — even inside a single value — because
+// `field[op]:value` is auto-wrapped as `and(field[op]:value)` before
+// parsing. A comma inside a value (an email domain someone typos, a company
+// name like "Acme, Inc.") would otherwise silently split into a second,
+// malformed clause: not an error, an *empty result*, which for a
+// lookup-then-create path means a duplicate Company/Person is created
+// instead of the existing one being found. Wrapping the value in double
+// quotes makes Twenty's top-level splitter treat it as one token. "[" and
+// "]" have no verified-safe escape (they toggle the splitter's own
+// "inside brackets" state), so a value containing either is refused rather
+// than risking a silently wrong match. `encodeURIComponent` alone does not
+// provide any of this — it round-trips a literal comma right back to `,`,
+// which is exactly the byte Twenty's parser treats as a separator.
+//
+// Ported (not imported) from scripts/import-prospects/twenty-rest.ts's
+// escapeFilterValue, which discovered this live against the production
+// Twenty instance (see that file for the full incident writeup and the
+// citations into Twenty's own parser source and test suite). Duplicated
+// rather than imported because scripts/import-prospects is a separate,
+// unrelated CLI-script tree — pulling a Next.js server module's dependency
+// from a one-off import tool is the wrong direction for that boundary, and
+// this is a small, pure, six-line function.
+const escapeFilterValue = (value: string): string => {
+  if (/[[\]]/.test(value)) {
+    throw new Error(
+      'Cannot build a Twenty filter for a value containing "[" or "]" — no verified-safe '
+      + `encoding exists for it: ${JSON.stringify(value)}`,
+    );
+  }
+
+  if (!value.includes(',')) return value;
+
+  if (value.includes('"')) {
+    throw new Error(
+      'Cannot build a Twenty filter for a value containing both "," and \'"\' — quoting the '
+      + `value would end at the embedded quote and expose the comma unprotected: ${JSON.stringify(value)}`,
+    );
+  }
+
+  return `"${value}"`;
+};
+
+// encodeURIComponent is applied once, here, to the entire assembled filter
+// clause — never to an individual value on its own (see escapeFilterValue
+// above for why that would be insufficient). Mirrors
+// scripts/import-prospects/twenty-rest.ts's findByFilter, which applies the
+// same discipline at the same point: encode the whole clause exactly once,
+// at the moment it goes into the query string.
+const findByFilter = (plural: string, filter: string): string =>
+  `/${plural}?filter=${encodeURIComponent(filter)}&limit=1`;
 
 const firstRecordId = async (path: string, plural: string): Promise<string | undefined> => {
   const response = await twentyRest<ListResponse>(path);
@@ -58,10 +108,10 @@ const createdId = (response: CreateResponse): string => {
 const findOrCreateCompany = async (name: string, domain: string): Promise<string> => {
   const domainUrl = domain ? `https://${domain}` : undefined;
   const filter = domainUrl
-    ? `domainName.primaryLinkUrl[eq]:${encodeFilter(domainUrl)}`
-    : `name[eq]:${encodeFilter(name)}`;
+    ? `domainName.primaryLinkUrl[eq]:${escapeFilterValue(domainUrl)}`
+    : `name[eq]:${escapeFilterValue(name)}`;
 
-  const existingId = await firstRecordId(`/companies?filter=${filter}&limit=1`, 'companies');
+  const existingId = await firstRecordId(findByFilter('companies', filter), 'companies');
   if (existingId) return existingId;
 
   const response = await twentyRest<CreateResponse>('/companies', {
@@ -81,8 +131,8 @@ const findOrCreateCompany = async (name: string, domain: string): Promise<string
 const findOrCreatePerson = async (
   lead: InboundLead, companyId: string,
 ): Promise<string> => {
-  const filter = `emails.primaryEmail[eq]:${encodeFilter(lead.email)},companyId[eq]:${companyId}`;
-  const existingId = await firstRecordId(`/people?filter=${filter}&limit=1`, 'people');
+  const filter = `emails.primaryEmail[eq]:${escapeFilterValue(lead.email)},companyId[eq]:${companyId}`;
+  const existingId = await firstRecordId(findByFilter('people', filter), 'people');
   if (existingId) return existingId;
 
   const { firstName, lastName } = splitFullName(lead.name);
