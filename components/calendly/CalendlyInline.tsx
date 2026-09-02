@@ -22,8 +22,6 @@ export default function CalendlyInline({ url, height = '750px', prefillOverride 
       const urlObj = new URL(activeUrl);
       urlObj.searchParams.set('hide_landing_page_details', '1');
       urlObj.searchParams.set('hide_gdpr_banner', '1');
-      urlObj.searchParams.set('background_color', '0b0f17');
-      urlObj.searchParams.set('text_color', 'ffffff');
       urlObj.searchParams.set('primary_color', '10b981');
 
       if (activePrefill.name) urlObj.searchParams.set('name', activePrefill.name);

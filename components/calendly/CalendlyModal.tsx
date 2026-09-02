@@ -26,8 +26,6 @@ export default function CalendlyModal() {
     const urlObj = new URL(calendlyUrl);
     urlObj.searchParams.set('hide_landing_page_details', '1');
     urlObj.searchParams.set('hide_gdpr_banner', '1');
-    urlObj.searchParams.set('background_color', '0b0f17');
-    urlObj.searchParams.set('text_color', 'ffffff');
     urlObj.searchParams.set('primary_color', '10b981');
 
     if (prefill.name) urlObj.searchParams.set('name', prefill.name);
