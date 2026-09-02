@@ -3,10 +3,12 @@
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
+import { useCalendly } from '@/components/calendly/CalendlyContext';
 
 export default function Navbar() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const pathname = usePathname();
+  const { openCalendly } = useCalendly();
 
   // Close mobile menu when navigating to a new route
   useEffect(() => {

@@ -66,7 +66,7 @@ export default function Footer() {
               </a>
             </li>
             <li>
-              <a href="mailto:hello@fraterailabs.com">hello@fraterailabs.com</a>
+              <a href="mailto:fraterai@fraterailabs.com">fraterai@fraterailabs.com</a>
             </li>
             <li>
               <Link href="/contact">Start a Conversation</Link>

@@ -3,6 +3,8 @@ import "./globals.css";
 import Navbar from "@/components/global/Navbar";
 import Footer from "@/components/global/Footer";
 import ScrollRevealProvider from "@/components/global/ScrollRevealProvider";
+import { CalendlyProvider } from "@/components/calendly/CalendlyContext";
+import CalendlyModal from "@/components/calendly/CalendlyModal";
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://www.fraterailabs.com'),
@@ -32,11 +34,14 @@ export default function RootLayout({
         />
       </head>
       <body>
-        <ScrollRevealProvider>
-          <Navbar />
-          {children}
-          <Footer />
-        </ScrollRevealProvider>
+        <CalendlyProvider>
+          <ScrollRevealProvider>
+            <Navbar />
+            {children}
+            <Footer />
+          </ScrollRevealProvider>
+          <CalendlyModal />
+        </CalendlyProvider>
       </body>
     </html>
   );
