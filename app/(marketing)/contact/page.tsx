@@ -1,9 +1,8 @@
 "use client";
 
 import { useRef, useState } from 'react';
-import Link from 'next/link';
-import Script from 'next/script';
 import TurnstileWidget, { type TurnstileWidgetHandle } from '@/components/TurnstileWidget';
+import CalendlyInline from '@/components/calendly/CalendlyInline';
 // Imported from lib/lead-form-fields.ts, not the route handler itself: the
 // route transitively imports 'server-only' (via lib/server/leads.ts,
 // hubspot-mirror.ts, turnstile.ts), and Next.js refuses to bundle anything
@@ -145,7 +144,7 @@ export default function Contact() {
             <p>Whether you need a custom document-processing pipeline, an army of intelligent agents, or an enterprise-wide model rollout, our engineering team is ready to help you push boundaries.</p>
             <div style={{ marginTop: '3rem' }}>
               <p style={{ fontSize: '0.875rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--muted)', marginBottom: '0.5rem' }}>DIRECT EMAIL</p>
-              <p><a href="mailto:hello@highachievers.ai" style={{ color: '#fff', textDecoration: 'none', fontSize: '1.25rem' }}>hello@highachievers.ai</a></p>
+              <p><a href="mailto:fraterai@fraterailabs.com" style={{ color: '#fff', textDecoration: 'none', fontSize: '1.25rem' }}>fraterai@fraterailabs.com</a></p>
             </div>
           </div>
 
@@ -167,7 +166,6 @@ export default function Contact() {
 
             <div id="contact-form-view" style={{ display: activeTab === 'form' ? 'block' : 'none' }}>
               <form id="cinematic-contact-form" onSubmit={handleSubmit} className="cinematic-form">
-
                 <div className="form-group">
                   <label htmlFor="name">Name</label>
                   <input type="text" id="name" name="name" placeholder="Jane Doe" required />
@@ -218,9 +216,8 @@ export default function Contact() {
               </form>
             </div>
 
-            <div id="contact-calendar-view" className="cinematic-form" style={{ display: activeTab === 'calendar' ? 'block' : 'none', padding: 0, overflow: 'hidden', border: 'none', background: 'transparent', boxShadow: 'none' }}>
-              <div className="calendly-inline-widget" data-url="https://calendly.com/sabayo507" style={{ minWidth: '320px', height: '750px' }}></div>
-              <Script type="text/javascript" src="https://assets.calendly.com/assets/external/widget.js" strategy="lazyOnload" />
+            <div id="contact-calendar-view" style={{ display: activeTab === 'calendar' ? 'block' : 'none' }}>
+              <CalendlyInline height="720px" />
             </div>
           </div>
         </div>
