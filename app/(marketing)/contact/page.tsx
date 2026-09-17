@@ -1,12 +1,34 @@
 "use client";
 
-import { useState } from 'react';
-import Link from 'next/link';
+import { useRef, useState } from 'react';
+import TurnstileWidget, { type TurnstileWidgetHandle } from '@/components/TurnstileWidget';
 import CalendlyInline from '@/components/calendly/CalendlyInline';
+// Imported from lib/lead-form-fields.ts, not the route handler itself: the
+// route transitively imports 'server-only' (via lib/server/leads.ts,
+// hubspot-mirror.ts, turnstile.ts), and Next.js refuses to bundle anything
+// that imports 'server-only' into a Client Component. The route re-exports
+// these same constants for anyone reading app/api/leads/inbound/route.ts,
+// but this file must import the dependency-free source directly.
+import {
+  HONEYPOT_FIELD_NAME,
+  PAGE_URI_FIELD_NAME,
+  TURNSTILE_TOKEN_FIELD_NAME,
+} from '@/lib/lead-form-fields';
 
 export default function Contact() {
   const [activeTab, setActiveTab] = useState<'form' | 'calendar'>('form');
-
+  const [turnstileToken, setTurnstileToken] = useState('');
+  // Cloudflare siteverify tokens are single-use. Without this, a visitor
+  // who fixes a validation error and retries (or retries after a
+  // transient 500) resubmits the same, already-consumed token and gets
+  // "Verification failed" instead of the real, now-corrected outcome —
+  // with no recovery short of a full page reload. The same is true after
+  // a *successful* submission: nothing else clears this state, so a second
+  // inquiry sent in the same page load would reuse the first one's spent
+  // token. Every branch below (success, non-ok response, and network
+  // error) clears turnstileToken and calls turnstileRef.current?.reset()
+  // so whatever the visitor does next gets a fresh token.
+  const turnstileRef = useRef<TurnstileWidgetHandle>(null);
   const [buttonState, setButtonState] = useState({
     text: 'Send Message',
     disabled: false,
@@ -14,6 +36,8 @@ export default function Contact() {
     borderColor: '',
     backgroundColor: ''
   });
+
+  const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -24,34 +48,42 @@ export default function Contact() {
     const email = formData.get('email') || '';
     const company = formData.get('company') || '';
     const msg = formData.get('message') || '';
-
-    // Split name into firstname and lastname to match HubSpot default properties
-    const nameParts = (name as string).trim().split(' ');
-    const firstname = nameParts[0];
-    const lastname = nameParts.length > 1 ? nameParts.slice(1).join(' ') : '';
+    const website = formData.get(HONEYPOT_FIELD_NAME) || '';
 
     const payload = {
-      fields: [
-        { name: 'email', value: email },
-        { name: 'firstname', value: firstname },
-        { name: 'lastname', value: lastname },
-        { name: 'company', value: company },
-        { name: 'message', value: msg }
-      ],
-      context: {
-        pageUri: window.location.href,
-        pageName: document.title
-      }
+      name,
+      email,
+      company,
+      message: msg,
+      [HONEYPOT_FIELD_NAME]: website,
+      [PAGE_URI_FIELD_NAME]: window.location.href,
+      [TURNSTILE_TOKEN_FIELD_NAME]: turnstileToken,
     };
 
     try {
-      const response = await fetch('https://api.hsforms.com/submissions/v3/integration/submit/245673738/7aaf12d7-5cc8-43a9-91ce-2fcb0961ab4c', {
+      const response = await fetch('/api/leads/inbound', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
 
       if (response.ok) {
+        // This branch is reached identically for a genuine success and for
+        // a filled honeypot (route.ts returns a byte-identical 200 for
+        // both, by design — see HONEYPOT_FIELD_NAME's usage there). The
+        // client cannot and must not try to tell them apart, so this reset
+        // is unconditional here, exactly like the failure branches below,
+        // rather than gated on anything that would create an observable
+        // difference between a caught bot and a real success.
+        //
+        // The token is single-use regardless of which case this was. Left
+        // uncleared, a visitor who sends one inquiry and then sends a
+        // second in the same page load (without a reload) would resubmit
+        // the already-consumed token and get "Verification failed" on a
+        // legitimate second message — same mechanism as the failure-path
+        // bug, just reached from the success side.
+        setTurnstileToken('');
+        turnstileRef.current?.reset();
         setButtonState({
           text: '✓ Message Sent! We will get in touch soon.',
           disabled: false,
@@ -61,6 +93,13 @@ export default function Contact() {
         });
         (e.target as HTMLFormElement).reset();
       } else {
+        // The Turnstile token the route just rejected (or ignored on the
+        // way to a 500) is single-use and already consumed. Clearing it
+        // and resetting the widget means the retry this error state
+        // invites actually gets a fresh token instead of repeating the
+        // same "Verification failed" regardless of what the visitor fixes.
+        setTurnstileToken('');
+        turnstileRef.current?.reset();
         setButtonState({
           text: 'Error submitting form. Please try again.',
           disabled: false,
@@ -70,6 +109,12 @@ export default function Contact() {
         });
       }
     } catch (error) {
+      // Same reasoning as the non-ok branch above: a request that reached
+      // the network layer may still have reached and consumed the token
+      // at the server before the client-visible failure (e.g. the
+      // response failed to come back), so reset defensively here too.
+      setTurnstileToken('');
+      turnstileRef.current?.reset();
       setButtonState({
         ...buttonState,
         text: 'Network error sending message.',
@@ -137,7 +182,23 @@ export default function Contact() {
                   <label htmlFor="message">How can we help?</label>
                   <textarea id="message" name="message" rows={5} placeholder="Tell us about your context and goals..." required></textarea>
                 </div>
-                <button 
+                <div
+                  aria-hidden="true"
+                  style={{ position: 'absolute', left: '-9999px', top: 'auto', width: '1px', height: '1px', overflow: 'hidden' }}
+                >
+                  <input
+                    type="text"
+                    name={HONEYPOT_FIELD_NAME}
+                    tabIndex={-1}
+                    autoComplete="off"
+                  />
+                </div>
+                {siteKey && (
+                  <div style={{ margin: '1rem 0' }}>
+                    <TurnstileWidget ref={turnstileRef} siteKey={siteKey} onVerify={setTurnstileToken} onExpire={() => setTurnstileToken('')} />
+                  </div>
+                )}
+                <button
                   type="submit" 
                   disabled={buttonState.disabled}
                   className="btn btn-primary btn-block" 

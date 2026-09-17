@@ -1,0 +1,9 @@
+import 'server-only';
+
+export const requireEnv = (name: string): string => {
+  const value = process.env[name];
+  if (!value) throw new Error(`Missing required environment variable: ${name}`);
+  return value;
+};
+
+export const optionalEnv = (name: string): string | undefined => process.env[name];
