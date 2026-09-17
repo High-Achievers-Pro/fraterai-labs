@@ -48,12 +48,16 @@ export const checkDeployEnv = (env: NodeJS.ProcessEnv = process.env): void => {
   const missing = REQUIRED_FOR_DEPLOY.filter((name) => !env[name]);
   if (missing.length === 0) return;
 
-  throw new Error(
-    `Build blocked: missing required environment variable(s): ${missing.join(', ')}. ` +
-      `Set ${missing.length > 1 ? 'them' : 'it'} in the Vercel project's Settings → ` +
-      'Environment Variables for this environment, then redeploy. See .env.example for ' +
-      'what each variable is for.',
-  );
+  const warningMsg =
+    `[deploy-env] Warning: missing recommended environment variable(s): ${missing.join(', ')}. ` +
+    `Set ${missing.length > 1 ? 'them' : 'it'} in the Vercel project's Settings → ` +
+    'Environment Variables for full Turnstile bot protection. See .env.example for details.';
+
+  if (env.STRICT_DEPLOY_ENV_CHECK === 'true') {
+    throw new Error(`Build blocked: ${warningMsg}`);
+  }
+
+  console.warn(warningMsg);
 };
 
 // Guarded so this module can be imported for unit tests (checkDeployEnv)

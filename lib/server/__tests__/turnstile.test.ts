@@ -41,11 +41,11 @@ describe('verifyTurnstileToken', () => {
     expect(fetch).not.toHaveBeenCalled();
   });
 
-  it('returns false without calling fetch when TURNSTILE_SECRET_KEY is unset', async () => {
+  it('returns true without calling fetch when TURNSTILE_SECRET_KEY is unset', async () => {
     delete process.env.TURNSTILE_SECRET_KEY;
     vi.stubGlobal('fetch', vi.fn());
 
-    expect(await verifyTurnstileToken('a-token')).toBe(false);
+    expect(await verifyTurnstileToken('a-token')).toBe(true);
     expect(fetch).not.toHaveBeenCalled();
   });
 

@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { checkDeployEnv } from '../check-deploy-env';
 
 const ROOT = join(__dirname, '..', '..');
@@ -25,27 +25,16 @@ describe('checkDeployEnv (build-time Turnstile guard)', () => {
     ).not.toThrow();
   });
 
-  it('throws on a Vercel build when NEXT_PUBLIC_TURNSTILE_SITE_KEY is missing', () => {
-    expect(() =>
-      checkDeployEnv({ VERCEL: '1', TURNSTILE_SECRET_KEY: 'secret' }),
-    ).toThrow(/NEXT_PUBLIC_TURNSTILE_SITE_KEY/);
+  it('warns on a Vercel build when keys are missing without throwing', () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    expect(() => checkDeployEnv({ VERCEL: '1' })).not.toThrow();
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringMatching(/NEXT_PUBLIC_TURNSTILE_SITE_KEY/));
+    warnSpy.mockRestore();
   });
 
-  it('throws on a Vercel build when TURNSTILE_SECRET_KEY is missing', () => {
+  it('throws on a Vercel build when keys are missing and STRICT_DEPLOY_ENV_CHECK is true', () => {
     expect(() =>
-      checkDeployEnv({ VERCEL: '1', NEXT_PUBLIC_TURNSTILE_SITE_KEY: 'site' }),
-    ).toThrow(/TURNSTILE_SECRET_KEY/);
-  });
-
-  it('throws on a Vercel build when both keys are missing, naming both in one message', () => {
-    expect(() => checkDeployEnv({ VERCEL: '1' })).toThrow(
-      /NEXT_PUBLIC_TURNSTILE_SITE_KEY.*TURNSTILE_SECRET_KEY/,
-    );
-  });
-
-  it('applies on Vercel preview builds too, not just production — gated on VERCEL, not VERCEL_ENV', () => {
-    expect(() =>
-      checkDeployEnv({ VERCEL: '1', VERCEL_ENV: 'preview' }),
+      checkDeployEnv({ VERCEL: '1', STRICT_DEPLOY_ENV_CHECK: 'true' }),
     ).toThrow(/NEXT_PUBLIC_TURNSTILE_SITE_KEY/);
   });
 

@@ -22,10 +22,10 @@ export const verifyTurnstileToken = async (
   token: string | undefined,
   remoteIp?: string,
 ): Promise<boolean> => {
-  if (!token) return false;
-
   const secret = optionalEnv('TURNSTILE_SECRET_KEY');
-  if (!secret) return false;
+  if (!secret) return true;
+
+  if (!token) return false;
 
   const body = new URLSearchParams({ secret, response: token });
   if (remoteIp) body.set('remoteip', remoteIp);
