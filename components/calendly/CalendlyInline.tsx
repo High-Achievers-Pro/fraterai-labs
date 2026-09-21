@@ -1,8 +1,7 @@
 "use client";
 
-import React, { useState } from 'react';
-import Script from 'next/script';
-import { useCalendly, CalendlyPrefill } from './CalendlyContext';
+import React, { useState } from "react";
+import { useCalendly, CalendlyPrefill } from "./CalendlyContext";
 
 interface CalendlyInlineProps {
   url?: string;
@@ -10,7 +9,11 @@ interface CalendlyInlineProps {
   prefillOverride?: CalendlyPrefill;
 }
 
-export default function CalendlyInline({ url, height = '750px', prefillOverride }: CalendlyInlineProps) {
+export default function CalendlyInline({
+  url,
+  height = "750px",
+  prefillOverride,
+}: CalendlyInlineProps) {
   const { calendlyUrl, prefill: contextPrefill } = useCalendly();
   const [isLoading, setIsLoading] = useState(true);
 
@@ -20,15 +23,19 @@ export default function CalendlyInline({ url, height = '750px', prefillOverride 
   const buildEmbedUrl = () => {
     try {
       const urlObj = new URL(activeUrl);
-      urlObj.searchParams.set('hide_landing_page_details', '1');
-      urlObj.searchParams.set('hide_gdpr_banner', '1');
-      urlObj.searchParams.set('primary_color', '10b981');
+      urlObj.searchParams.set("hide_landing_page_details", "1");
+      urlObj.searchParams.set("hide_gdpr_banner", "1");
+      urlObj.searchParams.set("primary_color", "244f7a");
 
-      if (activePrefill.name) urlObj.searchParams.set('name', activePrefill.name);
-      if (activePrefill.email) urlObj.searchParams.set('email', activePrefill.email);
+      if (activePrefill.name)
+        urlObj.searchParams.set("name", activePrefill.name);
+      if (activePrefill.email)
+        urlObj.searchParams.set("email", activePrefill.email);
       if (activePrefill.subject || activePrefill.company) {
-        const customText = [activePrefill.subject, activePrefill.company].filter(Boolean).join(' - ');
-        urlObj.searchParams.set('a1', customText);
+        const customText = [activePrefill.subject, activePrefill.company]
+          .filter(Boolean)
+          .join(" - ");
+        urlObj.searchParams.set("a1", customText);
       }
 
       return urlObj.toString();
@@ -43,47 +50,59 @@ export default function CalendlyInline({ url, height = '750px', prefillOverride 
     <div
       className="calendly-inline-wrapper"
       style={{
-        position: 'relative',
-        width: '100%',
+        position: "relative",
+        width: "100%",
         height: height,
-        borderRadius: '16px',
-        overflow: 'hidden',
-        border: '1px solid rgba(255, 255, 255, 0.08)',
-        background: '#0b0f17',
+        borderRadius: "2px",
+        overflow: "hidden",
+        border: "1px solid #dce0e2",
+        background: "#faf9f6",
       }}
     >
       {isLoading && (
         <div
           style={{
-            position: 'absolute',
+            position: "absolute",
             top: 0,
             left: 0,
-            width: '100%',
-            height: '100%',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            backgroundColor: '#0b0f17',
-            color: 'rgba(255, 255, 255, 0.7)',
+            width: "100%",
+            height: "100%",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            backgroundColor: "#faf9f6",
+            color: "#5f6874",
             zIndex: 1,
-            gap: '1rem',
+            gap: "1rem",
           }}
         >
           <div
+            role="status"
+            aria-label="Loading calendar"
             style={{
-              width: '40px',
-              height: '40px',
-              border: '3px solid rgba(255, 255, 255, 0.1)',
-              borderTopColor: '#10b981',
-              borderRadius: '50%',
-              animation: 'spin 1s linear infinite',
+              width: "40px",
+              height: "40px",
+              border: "2px solid #dce0e2",
+              borderTopColor: "#244f7a",
+              borderRadius: "50%",
+              animation: "spin 1s linear infinite",
             }}
           ></div>
-          <span style={{ fontSize: '0.9rem', letterSpacing: '0.05em' }}>Loading Booking Calendar...</span>
+          <span style={{ fontSize: "0.9rem", letterSpacing: "0.05em" }}>
+            Loading your booking calendar…
+          </span>
         </div>
       )}
 
+      <a
+        href={activeUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="calendar-fallback"
+      >
+        Open scheduling in a new tab ↗
+      </a>
       <iframe
         src={embedUrl}
         width="100%"
@@ -91,15 +110,22 @@ export default function CalendlyInline({ url, height = '750px', prefillOverride 
         frameBorder="0"
         title="Schedule a Call - Calendly"
         onLoad={() => setIsLoading(false)}
-        style={{ border: 'none', width: '100%', height: '100%', minWidth: '320px' }}
+        style={{ border: "none", width: "100%", height: "100%", minWidth: "0" }}
       ></iframe>
 
-      <Script type="text/javascript" src="https://assets.calendly.com/assets/external/widget.js" strategy="lazyOnload" />
-
       <style jsx global>{`
+        @media (prefers-reduced-motion: reduce) {
+          .calendly-inline-wrapper [role="status"] {
+            animation: none !important;
+          }
+        }
         @keyframes spin {
-          0% { transform: rotate(0deg); }
-          100% { transform: rotate(360deg); }
+          0% {
+            transform: rotate(0deg);
+          }
+          100% {
+            transform: rotate(360deg);
+          }
         }
       `}</style>
     </div>

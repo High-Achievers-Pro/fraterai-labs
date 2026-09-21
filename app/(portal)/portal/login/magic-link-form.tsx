@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import posthog from 'posthog-js';
 import TurnstileWidget from '@/components/TurnstileWidget';
 
 // Matches the request endpoint's response exactly — see
@@ -10,6 +11,33 @@ import TurnstileWidget from '@/components/TurnstileWidget';
 const SENT_MESSAGE = 'If that address has access, a link is on its way.';
 
 type Status = 'idle' | 'submitting' | 'sent' | 'needs-verification';
+
+type PortalIdentityProps = {
+  workspaceMemberId: string;
+  email: string;
+  name: string;
+};
+
+export function PortalIdentity({ workspaceMemberId, email, name }: PortalIdentityProps) {
+  useEffect(() => {
+    posthog.identify(workspaceMemberId, { email, name });
+  }, [workspaceMemberId, email, name]);
+
+  return null;
+}
+
+export function SignOutButton() {
+  const handleClick = () => {
+    posthog.capture('portal_signed_out');
+    posthog.reset();
+  };
+
+  return (
+    <button type="submit" className="btn btn-ghost btn-sm" onClick={handleClick}>
+      Sign out
+    </button>
+  );
+}
 
 export default function MagicLinkForm() {
   const [email, setEmail] = useState('');
@@ -26,6 +54,7 @@ export default function MagicLinkForm() {
     }
 
     setStatus('submitting');
+    posthog.capture('magic_link_requested');
     try {
       await fetch('/api/auth/magic-link/request', {
         method: 'POST',

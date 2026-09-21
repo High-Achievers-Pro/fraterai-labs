@@ -1,57 +1,56 @@
-import Link from 'next/link';
-
+import { PageHero, TextLink, ContactCTA } from "@/components/marketing/Shared";
+import { Architecture } from "@/components/marketing/Architecture";
+const resources = [
+  {
+    title: "Building Resilient RAG Pipelines",
+    text: "Document retrieval, knowledge foundations, and the engineering behind dependable answers.",
+    image: "governance",
+    href: "/solutions/knowledge-base",
+  },
+  {
+    title: "The Cost of Context Windows",
+    text: "Prompt lengths, token budgets, and practical tradeoffs in high-throughput environments.",
+    image: "arcade",
+    href: "/services/llm-generative-ai",
+  },
+  {
+    title: "Agents in the Cloud",
+    text: "Deploying data processing workflows securely while retaining meaningful human oversight.",
+    image: "process",
+    href: "/services/ai-agents",
+  },
+];
 export default function Resources() {
   return (
     <main id="top">
-      <section className="hero" style={{ paddingTop: '10rem', paddingBottom: '4rem', textAlign: 'center' }}>
-        <div className="container reveal">
-          <p className="eyebrow" style={{ marginBottom: '0.5rem', color: 'var(--muted)' }}>RESEARCH & INSIGHTS</p>
-          <h1 style={{ fontSize: '4rem', marginBottom: '1.5rem', fontWeight: 600 }}>
-            The <span style={{ fontFamily: "ui-serif, Georgia, Cambria, serif", fontStyle: 'italic', color: 'var(--accent)' }}>Frontier</span>
-          </h1>
-          <p style={{ fontSize: '1.25rem', color: 'var(--muted-2)', maxWidth: '600px', margin: '0 auto', lineHeight: 1.6 }}>
-            Read our latest engineering deep-dives, strategic AI models, and deployment post-mortems.
-          </p>
-        </div>
-      </section>
-
+      <PageHero
+        label="Resources"
+        title="Ideas grounded in practice."
+        description="Engineering perspectives, strategic thinking, and lessons from bringing AI into real workflows."
+        image="governance"
+      />
       <section className="section">
         <div className="container">
-          <div className="resources-grid">
-            
-            <article className="resource-card reveal">
-              <div className="resource-image" style={{ background: 'linear-gradient(135deg, #111 0%, #0d2b24 100%)' }}></div>
-              <div className="resource-content">
-                <span className="resource-tag">Engineering</span>
-                <h3>Building Resilient RAG Pipelines</h3>
-                <p>How we structured a fail-safe document retrieval system scaling to millions of nodes.</p>
-                <Link href="#" className="resource-link">Read Article &rarr;</Link>
-              </div>
-            </article>
-
-            <article className="resource-card reveal" style={{ transitionDelay: '0.1s' }}>
-              <div className="resource-image" style={{ background: 'linear-gradient(135deg, #111 0%, #1a1625 100%)' }}></div>
-              <div className="resource-content">
-                <span className="resource-tag">Strategy</span>
-                <h3>The Cost of Context Windows</h3>
-                <p>Optimizing prompt lengths and token budgets in High-Throughput environments without losing intelligence.</p>
-                <Link href="#" className="resource-link">Read Article &rarr;</Link>
-              </div>
-            </article>
-
-            <article className="resource-card reveal" style={{ transitionDelay: '0.2s' }}>
-              <div className="resource-image" style={{ background: 'linear-gradient(135deg, #111 0%, #0c1a2c 100%)' }}></div>
-              <div className="resource-content">
-                <span className="resource-tag">Case Study</span>
-                <h3>Agents in the Cloud</h3>
-                <p>Deploying autonomous data processing clusters across Azure securely without losing human oversight.</p>
-                <Link href="#" className="resource-link">Read Article &rarr;</Link>
-              </div>
-            </article>
-
+          <div className="resource-grid">
+            {resources.map((r) => (
+              <article className="resource-entry" key={r.title}>
+                <Architecture name={r.image} />
+                <h2>{r.title}</h2>
+                <p>{r.text}</p>
+                <p className="resource-status">Article in preparation</p>
+                <TextLink href={r.href}>
+                  Explore the related capability
+                </TextLink>
+              </article>
+            ))}
+          </div>
+          <div className="resource-notice">
+            Our resource library is taking shape. For a question about your own
+            workflow, <TextLink href="/contact">start a conversation</TextLink>.
           </div>
         </div>
       </section>
+      <ContactCTA />
     </main>
   );
 }

@@ -52,3 +52,5 @@ next-env.d.ts
 twenty-app/node_modules
 twenty-app/dist
 twenty-app/.twenty
+# Local PostHog installer reference material
+.posthog-wizard-cache/

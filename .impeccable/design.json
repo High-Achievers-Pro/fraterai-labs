@@ -1,0 +1,178 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-09-10T05:00:00Z",
+  "title": "Design System: FraterAI public website",
+  "extensions": {
+    "colorMeta": {
+      "paper": {
+        "role": "neutral",
+        "displayName": "Paper",
+        "canonical": "#faf9f6"
+      },
+      "secondary-surface": {
+        "role": "neutral",
+        "displayName": "Secondary Surface",
+        "canonical": "#f2f3f3"
+      },
+      "elevated-surface": {
+        "role": "neutral",
+        "displayName": "Elevated Surface",
+        "canonical": "#fffefa"
+      },
+      "ink": {
+        "role": "neutral",
+        "displayName": "Ink",
+        "canonical": "#17212b"
+      },
+      "muted-text": {
+        "role": "neutral",
+        "displayName": "Muted Text",
+        "canonical": "#5f6874"
+      },
+      "academic-blue": {
+        "role": "primary",
+        "displayName": "Academic Blue",
+        "canonical": "#244f7a"
+      },
+      "muted-blue": {
+        "role": "neutral",
+        "displayName": "Muted Blue",
+        "canonical": "#6583a0"
+      },
+      "divider": {
+        "role": "neutral",
+        "displayName": "Divider",
+        "canonical": "#dce0e2"
+      }
+    },
+    "shadows": [
+      {
+        "name": "operating-model",
+        "value": "0 5px 35px rgb(29 56 79 / .13)",
+        "purpose": "Lift the explanatory model above architecture."
+      }
+    ],
+    "motion": [
+      {
+        "name": "ease-out",
+        "value": "cubic-bezier(.23,1,.32,1)",
+        "purpose": "Shared geometric transitions."
+      },
+      {
+        "name": "press",
+        "value": "120ms",
+        "purpose": "Button feedback."
+      },
+      {
+        "name": "ui",
+        "value": "180ms",
+        "purpose": "Pointer disclosure and model crossfade."
+      },
+      {
+        "name": "process",
+        "value": "220ms",
+        "purpose": "Selected outcome crossfade."
+      },
+      {
+        "name": "hero-copy",
+        "value": "650ms",
+        "purpose": "Initial reading hierarchy."
+      },
+      {
+        "name": "hero-model",
+        "value": "750ms",
+        "purpose": "Initial model entrance after 100ms."
+      },
+      {
+        "name": "hero-art",
+        "value": "1000ms",
+        "purpose": "Initial engraved artwork entrance."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "compact-desktop",
+        "value": "1250px"
+      },
+      {
+        "name": "mobile-navigation",
+        "value": "1099px"
+      },
+      {
+        "name": "stacked-layout",
+        "value": "767px"
+      },
+      {
+        "name": "small-phone",
+        "value": "374px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Square editorial action with visible focus and press feedback.",
+      "html": "<button class=\"ds-button-primary\">Start a conversation</button>",
+      "css": ".ds-button-primary{display:inline-flex;align-items:center;justify-content:center;min-height:49px;padding:12px 25px;font:500 13px var(--font-sans, sans-serif);border:1px solid;border-radius:2px;cursor:pointer;transition:background-color 180ms cubic-bezier(.23,1,.32,1),transform 120ms cubic-bezier(.23,1,.32,1);background:var(--text,#17212b);color:var(--bg,#faf9f6);border-color:var(--text,#17212b);}.ds-button-primary:focus-visible{outline:2px solid var(--accent,#244f7a);outline-offset:4px}.ds-button-primary:active{transform:scale(.98)}@media(hover:hover) and (pointer:fine){.ds-button-primary:hover{background:var(--accent,#244f7a);border-color:var(--accent,#244f7a);}}@media(prefers-reduced-motion:reduce){.ds-button-primary{transition:none}.ds-button-primary:active{transform:none}}"
+    },
+    {
+      "name": "Secondary button",
+      "kind": "button",
+      "refersTo": "button-ghost",
+      "description": "Square editorial action with visible focus and press feedback.",
+      "html": "<button class=\"ds-button-ghost\">Start a conversation</button>",
+      "css": ".ds-button-ghost{display:inline-flex;align-items:center;justify-content:center;min-height:49px;padding:12px 25px;font:500 13px var(--font-sans, sans-serif);border:1px solid;border-radius:2px;cursor:pointer;transition:background-color 180ms cubic-bezier(.23,1,.32,1),transform 120ms cubic-bezier(.23,1,.32,1);background:var(--bg,#faf9f6);color:var(--accent,#244f7a);border-color:#7390ab;}.ds-button-ghost:focus-visible{outline:2px solid var(--accent,#244f7a);outline-offset:4px}.ds-button-ghost:active{transform:scale(.98)}@media(hover:hover) and (pointer:fine){.ds-button-ghost:hover{background:#eaf0f5;}}@media(prefers-reduced-motion:reduce){.ds-button-ghost{transition:none}.ds-button-ghost:active{transform:none}}"
+    },
+    {
+      "name": "Text field",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Visible label above a paper field.",
+      "html": "<label class=\"ds-field\">Your name<input autocomplete=\"name\" placeholder=\"Your name\"></label>",
+      "css": ".ds-field{display:block;color:var(--text,#17212b);font:12px var(--font-sans,sans-serif)}.ds-field input{display:block;width:100%;margin-top:8px;padding:12px 14px;border:1px solid #a4adb6;border-radius:2px;background:var(--bg,#faf9f6);color:var(--text,#17212b);font:14px var(--font-sans,sans-serif)}.ds-field input:focus{border-color:var(--accent,#244f7a)}.ds-field input:focus-visible{outline:2px solid var(--accent,#244f7a);outline-offset:4px}"
+    },
+    {
+      "name": "Navigation link",
+      "kind": "nav",
+      "description": "Quiet label with a blue active rule.",
+      "html": "<nav class=\"ds-navigation\"><a href=\"/services\" aria-current=\"page\">Services</a><a href=\"/process\">Process</a></nav>",
+      "css": ".ds-navigation{display:flex;gap:28px;font:13px var(--font-sans,sans-serif)}.ds-navigation a{color:var(--text,#17212b);text-decoration:none;padding:8px 0;border-bottom:1px solid transparent}.ds-navigation a[aria-current],.ds-navigation a:hover{border-color:var(--accent,#244f7a);color:var(--accent,#244f7a)}.ds-navigation a:focus-visible{outline:2px solid var(--accent,#244f7a);outline-offset:4px}"
+    },
+    {
+      "name": "Service card",
+      "kind": "card",
+      "description": "Fine outlined capability link with clear action space.",
+      "html": "<a class=\"ds-service\" href=\"/services/ai-strategy\"><strong>AI Strategy &amp; Roadmap</strong><span>A clear path from ambition to a practical plan.</span></a>",
+      "css": ".ds-service{display:block;min-height:85px;padding:17px 38px 17px 16px;border:1px solid var(--border,#dce0e2);border-radius:2px;text-decoration:none;font:13px/1.55 var(--font-sans,sans-serif);color:var(--accent,#244f7a);transition:background-color 180ms cubic-bezier(.23,1,.32,1)}.ds-service strong{font-weight:500}.ds-service span{display:block;margin-top:6px;font-size:12px;color:var(--muted,#5f6874)}.ds-service:hover{background:#f0f3f5}.ds-service:focus-visible{outline:2px solid var(--accent,#244f7a);outline-offset:4px}"
+    }
+  ],
+  "narrative": {
+    "northStar": "Knowledge in practice",
+    "overview": "The public website pairs original academic architecture engravings with warm paper, blue ink, and editorial serif typography. The user\u2019s supplied mockups establish this visual language, including small blue labels and square cards. This system applies to marketing routes; the portal retains its existing design.",
+    "keyCharacteristics": [
+      "Original university architecture with fine engraved detail.",
+      "Large serif statements paired with quiet sans-serif explanations.",
+      "Fine dividers, square controls, and deliberate whitespace.",
+      "Motion explains state and hierarchy without persistent decorative loops."
+    ],
+    "rules": [
+      {
+        "name": "The One Ink Rule",
+        "body": "Illustrations use blue engraving on paper; avoid government symbols and unrelated colorful imagery.",
+        "section": "colors"
+      }
+    ],
+    "dos": [
+      "Do use the supplied academic engraving language and preserve product truth.",
+      "Do retain visible focus states, semantic controls, and readable mobile spacing.",
+      "Do use motion to explain a user action or the reading hierarchy."
+    ],
+    "donts": [
+      "Don't turn illustrative people or workflow data into customer proof.",
+      "Don't add permanent animated counters, floating buildings, or magnetic form controls.",
+      "Don't apply this marketing stylesheet to the portal."
+    ]
+  }
+}

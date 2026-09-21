@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { readMagicToken } from '@/lib/server/magic-link';
 import { findActiveWorkspaceMember } from '@/lib/server/membership';
 import { SESSION_COOKIE_NAME, SESSION_TTL_SECONDS, createSessionCookie } from '@/lib/server/session';
+import { captureServerEvent } from '@/lib/server/posthog';
 
 const invalidLinkRedirect = (request: NextRequest) =>
   NextResponse.redirect(new URL('/portal/login?error=link_invalid', request.url));
@@ -40,6 +41,7 @@ export const GET = async (request: NextRequest) => {
     response.cookies.set(SESSION_COOKIE_NAME, cookie, {
       httpOnly: true, secure: true, sameSite: 'lax', path: '/', maxAge: SESSION_TTL_SECONDS,
     });
+    await captureServerEvent('magic_link_sign_in_completed', member.id);
     return response;
   } catch (error) {
     console.error('[auth/magic-link] verification failed', error);

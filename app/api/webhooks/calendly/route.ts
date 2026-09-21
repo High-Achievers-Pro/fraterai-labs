@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
+import { captureServerEvent } from '@/lib/server/posthog';
 
 /**
  * Calendly Webhook Handler API Route
@@ -44,6 +45,8 @@ export async function POST(req: NextRequest) {
     console.log(`[Calendly Webhook Received] Event: ${eventType}`, payload?.email || payload?.name);
 
     if (eventType === 'invitee.created') {
+      await captureServerEvent('calendly_meeting_booked');
+
       const inviteeName = payload.name || '';
       const inviteeEmail = payload.email || '';
       const questionsAndAnswers = payload.questions_and_answers || [];

@@ -3,6 +3,7 @@ import { evaluateAccess } from '@/lib/server/auth-gate';
 import { exchangeCodeForIdToken, verifyIdToken } from '@/lib/server/google-oauth';
 import { findActiveWorkspaceMember } from '@/lib/server/membership';
 import { SESSION_COOKIE_NAME, SESSION_TTL_SECONDS, createSessionCookie } from '@/lib/server/session';
+import { captureServerEvent } from '@/lib/server/posthog';
 
 export const GET = async (request: NextRequest) => {
   const url = new URL(request.url);
@@ -33,6 +34,7 @@ export const GET = async (request: NextRequest) => {
       httpOnly: true, secure: true, sameSite: 'lax', path: '/', maxAge: SESSION_TTL_SECONDS,
     });
     response.cookies.delete('frater_oauth_state');
+    await captureServerEvent('google_sign_in_completed', decision.member.id);
 
     return response;
   } catch (error) {

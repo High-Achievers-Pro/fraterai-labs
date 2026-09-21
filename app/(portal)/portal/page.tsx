@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import { SESSION_COOKIE_NAME } from '@/lib/server/session';
 import { checkPortalAccess } from '@/lib/server/portal-access';
 import { getPortalSummary } from '@/lib/server/summary';
+import { PortalIdentity, SignOutButton } from './login/magic-link-form';
 
 export default async function PortalPage() {
   // proxy.ts already gates this route on a validly-signed, unexpired
@@ -34,6 +35,11 @@ export default async function PortalPage() {
   return (
     <section className="section">
       <div className="container">
+        <PortalIdentity
+          workspaceMemberId={session.workspaceMemberId}
+          email={session.email}
+          name={session.name}
+        />
         <h1 className="section-title">Welcome, {name}</h1>
         <p className="section-tagline">This is your Frater AI Labs portal.</p>
 
@@ -85,9 +91,7 @@ export default async function PortalPage() {
         </div>
 
         <form action="/api/auth/logout" method="POST" style={{ marginTop: '3rem' }}>
-          <button type="submit" className="btn btn-ghost btn-sm">
-            Sign out
-          </button>
+          <SignOutButton />
         </form>
       </div>
     </section>

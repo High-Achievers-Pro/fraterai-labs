@@ -1,158 +1,231 @@
 "use client";
 
-import Link from 'next/link';
-import { useState, useEffect } from 'react';
-import { usePathname } from 'next/navigation';
-import { useCalendly } from '@/components/calendly/CalendlyContext';
+import Image from "next/image";
+import Link from "next/link";
+import { useEffect, useRef, useState } from "react";
+import { usePathname } from "next/navigation";
+import { CaretDown, List, X, ArrowRight } from "@phosphor-icons/react";
 
-export default function Navbar() {
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+const serviceLinks = [
+  ["AI Strategy & Roadmap", "ai-strategy"],
+  ["AI Proof of Concept", "ai-poc"],
+  ["Data Engineering & BI", "data-engineering"],
+  ["AI Agents & Automation", "ai-agents"],
+  ["LLM & Generative AI", "llm-generative-ai"],
+  ["Chatbot & Conversational AI", "chatbot-conversational-ai"],
+  ["AI-Native Product Engineering", "ai-native-product"],
+  ["Machine Learning & CV", "machine-learning"],
+  ["AI Integration Services", "ai-integration"],
+  ["AI Training & Teams", "ai-enablement"],
+];
+const solutionLinks = [
+  ["AI Document Processing", "document-processing"],
+  ["AI-Powered Knowledge Base", "knowledge-base"],
+  ["AI-Driven Customer Experience", "customer-experience"],
+];
+
+function Navigation() {
   const pathname = usePathname();
-  const { openCalendly } = useCalendly();
-
-  // Close mobile menu when navigating to a new route
-  useEffect(() => {
-    setIsMobileMenuOpen(false);
-  }, [pathname]);
-
-  // Lock body scroll when mobile menu is open
-  useEffect(() => {
-    if (isMobileMenuOpen) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = 'unset';
-    }
-  }, [isMobileMenuOpen]);
-
-  const toggleMenu = () => {
-    setIsMobileMenuOpen(!isMobileMenuOpen);
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [submenu, setSubmenu] = useState<string | null>(null);
+  const [keyboard, setKeyboard] = useState(false);
+  const header = useRef<HTMLElement>(null);
+  const toggle = useRef<HTMLButtonElement>(null);
+  const close = () => {
+    setMobileOpen(false);
+    setSubmenu(null);
   };
 
+  useEffect(() => {
+    if (!mobileOpen) return;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const media = matchMedia("(min-width: 1100px)");
+    const onResize = () => {
+      if (media.matches) setMobileOpen(false);
+    };
+    media.addEventListener("change", onResize);
+    return () => {
+      document.body.style.overflow = previous;
+      media.removeEventListener("change", onResize);
+    };
+  }, [mobileOpen]);
+  useEffect(() => {
+    const clickOutside = (e: PointerEvent) => {
+      if (!header.current?.contains(e.target as Node)) setSubmenu(null);
+    };
+    document.addEventListener("pointerdown", clickOutside);
+    return () => document.removeEventListener("pointerdown", clickOutside);
+  }, []);
+
   return (
-    <header className="site-header">
-      <div className="container">
-        <Link href="/" className="brand">
-          <img src="/src/assets/logo.svg" alt="FraterAI Logo" className="brand-mark" width={32} height={32} />
-          <span className="brand-name">FraterAI</span>
+    <header
+      ref={header}
+      className="site-header"
+      data-keyboard={keyboard}
+      onKeyDown={(e) => {
+        if (e.key === "Escape") {
+          if (submenu) {
+            document.getElementById(`toggle-${submenu}`)?.focus();
+            setSubmenu(null);
+          } else {
+            close();
+            toggle.current?.focus();
+          }
+        }
+        if (e.key === "Tab" && mobileOpen) {
+          const focusable = Array.from(
+            header.current?.querySelectorAll<HTMLElement>("a[href], button") ??
+              [],
+          ).filter((el) => el.getClientRects().length);
+          const first = focusable[0],
+            last = focusable[focusable.length - 1];
+          if (e.shiftKey && document.activeElement === first) {
+            e.preventDefault();
+            last.focus();
+          } else if (!e.shiftKey && document.activeElement === last) {
+            e.preventDefault();
+            first.focus();
+          }
+        }
+      }}
+    >
+      <div className="container header-inner">
+        <Link href="/" className="brand" onClick={close}>
+          <Image
+            src="/brand/fraterai-logo.svg"
+            alt="FraterAI"
+            width={200}
+            height={42}
+            className="brand-logo"
+            loading="eager"
+          />
         </Link>
-
-        {/* Mobile Hamburger Toggle */}
-        <button 
-          className="mobile-toggle" 
-          onClick={toggleMenu}
-          aria-expanded={isMobileMenuOpen}
-          aria-controls="mobile-nav"
-          aria-label={isMobileMenuOpen ? "Close menu" : "Open menu"}
+        <button
+          ref={toggle}
+          className="mobile-toggle"
+          onClick={(e) => {
+            setKeyboard(e.detail === 0);
+            setMobileOpen(!mobileOpen);
+          }}
+          aria-expanded={mobileOpen}
+          aria-controls="primary-navigation"
+          aria-label={mobileOpen ? "Close menu" : "Open menu"}
         >
-          {isMobileMenuOpen ? (
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <line x1="18" y1="6" x2="6" y2="18"></line>
-              <line x1="6" y1="6" x2="18" y2="18"></line>
-            </svg>
-          ) : (
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <line x1="3" y1="12" x2="21" y2="12"></line>
-              <line x1="3" y1="6" x2="21" y2="6"></line>
-              <line x1="3" y1="18" x2="21" y2="18"></line>
-            </svg>
-          )}
+          {mobileOpen ? <X size={24} /> : <List size={24} />}
         </button>
-
-        <nav id="mobile-nav" className={`nav ${isMobileMenuOpen ? 'nav-open' : ''}`}>
-          <Link href="/">Home</Link>
-          
-          <div className="nav-item">
-            <Link href="/services">Services</Link>
-            <div className="mega-menu">
-              <div className="mega-grid">
-                <div className="mega-col">
-                  <h4>Discover</h4>
-                  <ul className="mega-col-list">
-                    <li>
-                      <Link href="/services/ai-strategy" onClick={() => setIsMobileMenuOpen(false)}>AI Strategy &amp; Roadmap</Link>
-                      <p>Identify highest-impact opportunities and build business cases.</p>
-                    </li>
-                    <li>
-                      <Link href="/services/ai-poc" onClick={() => setIsMobileMenuOpen(false)}>AI Proof of Concept</Link>
-                      <p>Validate technical feasibility and de-risk core assumptions.</p>
-                    </li>
-                  </ul>
-                </div>
-                <div className="mega-col">
-                  <h4>Organize</h4>
-                  <ul className="mega-col-list">
-                    <li>
-                      <Link href="/services/data-engineering" onClick={() => setIsMobileMenuOpen(false)}>Data Engineering &amp; BI</Link>
-                      <p>Architect robust data pipelines for scalable AI initiatives.</p>
-                    </li>
-                  </ul>
-                </div>
-                <div className="mega-col">
-                  <h4>Develop</h4>
-                  <ul className="mega-col-list">
-                    <li><Link href="/services/ai-agents" onClick={() => setIsMobileMenuOpen(false)}>AI Agents &amp; Automation</Link></li>
-                    <li><Link href="/services/llm-generative-ai" onClick={() => setIsMobileMenuOpen(false)}>LLM &amp; Generative AI</Link></li>
-                    <li><Link href="/services/chatbot-conversational-ai" onClick={() => setIsMobileMenuOpen(false)}>Chatbot &amp; Conversational AI</Link></li>
-                    <li><Link href="/services/ai-native-product" onClick={() => setIsMobileMenuOpen(false)}>AI-Native Product Eng</Link></li>
-                    <li><Link href="/services/machine-learning" onClick={() => setIsMobileMenuOpen(false)}>Machine Learning &amp; CV</Link></li>
-                  </ul>
-                </div>
-                <div className="mega-col">
-                  <h4>Deploy &amp; Enable</h4>
-                  <ul className="mega-col-list">
-                    <li>
-                      <Link href="/services/ai-integration" onClick={() => setIsMobileMenuOpen(false)}>AI Integration Services</Link>
-                      <p>Embed AI securely into legacy enterprise stacks.</p>
-                    </li>
-                    <li>
-                      <Link href="/services/ai-enablement" onClick={() => setIsMobileMenuOpen(false)}>AI Training &amp; Teams</Link>
-                      <p>Inject talent bandwidth and scale internal capacity.</p>
-                    </li>
-                  </ul>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <Link href="/process">Process</Link>
-          
-          <div className="nav-item">
-            <Link href="/solutions">Solutions</Link>
-            <div className="mega-menu">
-              <div className="mega-grid">
-                <div className="mega-col" style={{ flex: 2 }}>
-                  <h4>Turnkey Capabilities</h4>
-                  <ul className="mega-col-list" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
-                    <li>
-                      <Link href="/solutions/document-processing" onClick={() => setIsMobileMenuOpen(false)}>AI Document Processing</Link>
-                      <p>Turn unstructured PDFs and contracts into actionable internal data instantly.</p>
-                    </li>
-                    <li>
-                      <Link href="/solutions/knowledge-base" onClick={() => setIsMobileMenuOpen(false)}>AI-Powered Knowledge Base</Link>
-                      <p>Deploy secure RAG engines grounded purely in native company documentation.</p>
-                    </li>
-                    <li>
-                      <Link href="/solutions/customer-experience" onClick={() => setIsMobileMenuOpen(false)}>AI-Driven Customer Experience</Link>
-                      <p>Deploy omni-channel autonomous systems that perfectly resolve tiered support routing.</p>
-                    </li>
-                  </ul>
-                </div>
-                <div className="mega-col" style={{ flex: 1 }}>
-                  <div style={{ background: 'var(--bg-2)', padding: '2rem', borderRadius: '12px', border: '1px solid var(--border)' }}>
-                    <h3 style={{ fontSize: '1.2rem', marginBottom: '0.5rem', fontWeight: 600 }}>Want to see them in action?</h3>
-                    <p style={{ fontSize: '0.95rem', color: 'var(--muted)', marginBottom: '1.5rem', lineHeight: 1.6 }}>Our engineering team runs weekly live demonstrations of our turnkey solutions.</p>
-                    <Link href="/contact" className="btn btn-primary btn-sm" onClick={() => setIsMobileMenuOpen(false)}>Request a Demo</Link>
+        <nav
+          className={`nav ${mobileOpen ? "nav-open" : ""}`}
+          id="primary-navigation"
+          aria-label="Main navigation"
+        >
+          <Link
+            href="/"
+            aria-current={pathname === "/" ? "page" : undefined}
+            onClick={close}
+          >
+            Home
+          </Link>
+          {["Services", "Process", "Solutions", "Resources", "About"].map(
+            (label) => {
+              const key = label.toLowerCase();
+              const links =
+                key === "services"
+                  ? serviceLinks
+                  : key === "solutions"
+                    ? solutionLinks
+                    : null;
+              return links ? (
+                <div
+                  className="nav-item"
+                  key={key}
+                  onBlur={(e) => {
+                    if (!e.currentTarget.contains(e.relatedTarget as Node))
+                      setSubmenu(null);
+                  }}
+                >
+                  <div className="nav-label">
+                    <Link
+                      href={`/${key}`}
+                      aria-current={
+                        pathname.startsWith(`/${key}`) ? "page" : undefined
+                      }
+                      onClick={close}
+                    >
+                      {label}
+                    </Link>
+                    <button
+                      id={`toggle-${key}`}
+                      aria-label={`Show ${key}`}
+                      aria-expanded={submenu === key}
+                      aria-controls={`menu-${key}`}
+                      onClick={(e) => {
+                        setKeyboard(e.detail === 0);
+                        setSubmenu(submenu === key ? null : key);
+                      }}
+                    >
+                      <CaretDown size={13} aria-hidden />
+                    </button>
+                  </div>
+                  <div
+                    className="mega-menu"
+                    id={`menu-${key}`}
+                    hidden={submenu !== key}
+                  >
+                    <div>
+                      <span className="menu-heading">{label}</span>
+                      <p>
+                        {key === "services"
+                          ? "From the first question to a working system."
+                          : "Purpose-built for the work in front of you."}
+                      </p>
+                      <Link
+                        href={`/${key}`}
+                        className="text-link"
+                        onClick={close}
+                      >
+                        Explore {key}
+                        <ArrowRight size={18} />
+                      </Link>
+                    </div>
+                    <ul>
+                      {links.map(([title, slug]) => (
+                        <li key={slug}>
+                          <Link href={`/${key}/${slug}`} onClick={close}>
+                            {title}
+                            <ArrowRight size={15} />
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
                   </div>
                 </div>
-              </div>
-            </div>
-          </div>
-
-          <Link href="/resources">Resources</Link>
-          <Link href="/about">About</Link>
-          <Link href="/contact" className="btn btn-primary btn-sm mobile-cta">Start a conversation</Link>
+              ) : (
+                <Link
+                  href={`/${key}`}
+                  key={key}
+                  aria-current={pathname === `/${key}` ? "page" : undefined}
+                  onClick={close}
+                >
+                  {label}
+                </Link>
+              );
+            },
+          )}
+          <Link
+            href="/contact"
+            className="btn btn-primary nav-cta"
+            onClick={close}
+          >
+            Start a conversation
+          </Link>
         </nav>
       </div>
     </header>
   );
+}
+
+export default function Navbar() {
+  const pathname = usePathname();
+  return <Navigation key={pathname} />;
 }
