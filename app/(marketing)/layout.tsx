@@ -19,19 +19,35 @@ const sans = DM_Sans({
   display: "swap",
 });
 
+const socialTitle = "FraterAI — Your next business advantage, built with AI.";
+const description =
+  "Strategic clarity, operator-level expertise, and disciplined engineering. We turn AI and machine learning into measurable progress for your business.";
+const socialImage = {
+  url: "https://www.fraterailabs.com/social/fraterai-preview-v2.jpg",
+  width: 1200,
+  height: 630,
+  type: "image/jpeg",
+  alt: "FraterAI — Your next business advantage, built with AI. Blue architectural engraving on warm paper.",
+};
+
 export const metadata: Metadata = {
   metadataBase: new URL("https://www.fraterailabs.com"),
   title: "FraterAI",
-  description:
-    "Intelligent agent architectures tailored to your deepest workflows.",
+  description,
   openGraph: {
-    title: "FraterAI",
-    description:
-      "Intelligent agent architectures tailored to your deepest workflows.",
+    title: socialTitle,
+    description,
     url: "https://www.fraterailabs.com",
     siteName: "FraterAI",
     locale: "en_US",
     type: "website",
+    images: [socialImage],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: socialTitle,
+    description,
+    images: [socialImage],
   },
 };
 
